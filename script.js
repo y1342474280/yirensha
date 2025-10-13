@@ -1,5 +1,187 @@
-// 卡牌数据（从你提供的 CSV 表格中提取）
-const cardData = [
+/* ========= 页面增强脚本：轮播 / 粒子 / 卡牌渲染（兼容 window.cardData） ========= */
+
+/* ----------------- 配置 ----------------- */
+const HERO_COUNT = 5; // 尝试加载 assets/bg/hero1..hero5.jpg/png
+const HERO_PATH_PREFIX = 'assets/bg/hero'; // hero1.jpg
+const CARD_DIR = 'assets/cards/'; // 保持你现有逻辑
+/* ---------------------------------------- */
+
+/* 全局元素 */
+const carouselEl = document.getElementById('hero-carousel');
+const dotsEl = document.getElementById('carousel-dots');
+const enterBtn = document.getElementById('enter-btn');
+const rulesBtn = document.getElementById('rules-btn');
+const rulesContent = document.getElementById('rules-content');
+const toggleRulesBtn = document.getElementById('toggle-rules');
+const grid = document.getElementById('cards-grid');
+const loading = document.getElementById('loading');
+const searchInput = document.getElementById('search');
+const modal = document.getElementById('card-modal');
+
+/* Modal fields */
+const modalName = document.getElementById('modal-name');
+const modalClass = document.getElementById('modal-class');
+const modalTier = document.getElementById('modal-tier');
+const modalEffect = document.getElementById('modal-effect');
+const modalValue = document.getElementById('modal-value');
+const modalImage = document.getElementById('modal-image');
+const downloadLink = document.getElementById('download-link');
+
+/* ================= 轮播 ================== */
+let heroSlides = [];
+let heroIndex = 0;
+let heroTimer = null;
+
+function tryLoadHeroImages() {
+  // 生成 slide 元素（懒加载图片）
+  for (let i = 1; i <= HERO_COUNT; i++) {
+    const urls = [`${HERO_PATH_PREFIX}${i}.jpg`, `${HERO_PATH_PREFIX}${i}.png`, `${HERO_PATH_PREFIX}${i}.jpeg`];
+    const slide = document.createElement('div');
+    slide.className = 'hero-slide';
+    slide.dataset.tried = 'false';
+    slide.dataset.index = i - 1;
+    carouselEl.appendChild(slide);
+
+    // 尝试每个可能的扩展，加载第一能成功的图
+    (function(slide, urls) {
+      let tried = 0;
+      function tryNext() {
+        if (tried >= urls.length) {
+          slide.style.display = 'none';
+          return;
+        }
+        const url = urls[tried++];
+        const img = new Image();
+        img.onload = () => {
+          slide.style.backgroundImage = `linear-gradient(180deg, rgba(6,8,10,0.14), rgba(6,8,10,0.24)), url('${url}')`;
+          slide.dataset.tried = 'true';
+          heroSlides.push(slide);
+          createDot(heroSlides.length - 1);
+          if (heroSlides.length === 1) { slide.classList.add('active'); }
+        };
+        img.onerror = tryNext;
+        img.src = url;
+      }
+      tryNext();
+    })(slide, urls);
+  }
+
+  // 如果没有任何 hero（全部缺失），用一张淡色背景占位
+  setTimeout(()=> {
+    if (heroSlides.length === 0) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'hero-slide active';
+      placeholder.style.background = 'radial-gradient(circle at 30% 30%, rgba(109,225,255,0.06), rgba(157,126,255,0.02)), linear-gradient(180deg, rgba(6,8,10,0.14), rgba(6,8,10,0.24))';
+      carouselEl.appendChild(placeholder);
+      heroSlides.push(placeholder);
+      createDot(0);
+    }
+    startHeroAuto();
+  }, 800);
+}
+
+function createDot(idx){
+  const btn = document.createElement('button');
+  if (idx === 0) btn.classList.add('active');
+  btn.addEventListener('click', () => {
+    goToHero(idx);
+    resetHeroTimer();
+  });
+  dotsEl.appendChild(btn);
+}
+
+function goToHero(idx){
+  heroSlides.forEach(s => s.classList.remove('active'));
+  heroSlides[idx].classList.add('active');
+  Array.from(dotsEl.children).forEach((b,i)=> b.classList.toggle('active', i===idx));
+  heroIndex = idx;
+}
+
+function startHeroAuto(){
+  if (heroTimer) clearInterval(heroTimer);
+  heroTimer = setInterval(()=> {
+    heroIndex = (heroIndex + 1) % heroSlides.length;
+    goToHero(heroIndex);
+  }, 4500);
+}
+function resetHeroTimer(){ startHeroAuto(); }
+
+/* 点击进入按钮平滑滚动到画廊 */
+enterBtn.addEventListener('click', ()=> {
+  document.getElementById('gallery').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+/* 规则面板切换 */
+rulesBtn.addEventListener('click', ()=> {
+  document.getElementById('rules').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+toggleRulesBtn.addEventListener('click', ()=> {
+  rulesContent.classList.toggle('expanded');
+});
+
+/* ================= 粒子背景 ================= */
+(function particleBg(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let w=canvas.width=innerWidth, h=canvas.height=innerHeight;
+  const particles = [];
+  const PARTICLE_N = Math.floor((w*h)/60000); // 0.6 particles per 10k px2
+  for(let i=0;i<PARTICLE_N;i++){
+    particles.push({
+      x: Math.random()*w,
+      y: Math.random()*h,
+      r: Math.random()*1.6 + 0.6,
+      vx: (Math.random()-0.5)*0.2,
+      vy: -0.1 - Math.random()*0.4,
+      life: Math.random()*1.0 + 0.5,
+      hue: 160 + Math.random()*80
+    });
+  }
+  function resize(){ w=canvas.width=innerWidth; h=canvas.height=innerHeight; }
+  window.addEventListener('resize', resize);
+
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    particles.forEach(p=>{
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.002;
+      if(p.life <= 0 || p.y < -20 || p.x < -20 || p.x > w+20){
+        p.x = Math.random()*w;
+        p.y = h + Math.random()*40;
+        p.vx = (Math.random()-0.5)*0.3;
+        p.vy = -0.2 - Math.random()*0.6;
+        p.life = Math.random()*1.2 + 0.4;
+      }
+      const alpha = Math.max(0, Math.min(1, p.life));
+      ctx.beginPath();
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r*12);
+      grad.addColorStop(0, `hsla(${p.hue},80%,70%,${0.14*alpha})`);
+      grad.addColorStop(0.5, `hsla(${p.hue},60%,55%,${0.06*alpha})`);
+      grad.addColorStop(1, `rgba(0,0,0,0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(p.x - p.r*12, p.y - p.r*12, p.r*24, p.r*24);
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ================= 卡牌渲染（保持与你现有逻辑一致） ================= */
+
+/*
+  重要：本脚本会优先使用 window.cardData（如果你在原脚本中已定义）
+  如果你把完整 cardData 放在另一个文件（如 data.js），确保该文件在本 script.js 之前加载，
+  或者把 cardData 合并到本文件顶部。
+*/
+
+function safeGetCardData(){
+  if (window.cardData && Array.isArray(window.cardData) && window.cardData.length>0) {
+    return window.cardData;
+  }
+  // 如果没有 cardData，尝试用目录中已知图片名（作为退路）
+  // 这里列出少量常见名作占位（你可以扩展/替换）
+  return [
   { name: "妙手空空", value: "", type: "法术", tier: "一阶", effect: "吟唱。禁制：对方手牌>2才能发动。对手洗牌，自己从中摸一张卡牌加入自己手卡。自己没有手牌的场合，额外摸一张。" },
   { name: "偷梁换柱", value: "", type: "法术", tier: "二阶", effect: "吟唱。选择对手两张手牌和自己一张手牌进行交换。" },
   { name: "破魔封禁", value: "3", type: "状态", tier: "二阶", effect: "选定对手2张卡牌暂时移除游戏。" },
@@ -200,77 +382,58 @@ const cardData = [
   { name: "上上签", value: "", type: "法术", tier: "二阶", effect: "吟唱。运势x：占卜等同运势点数的卡牌，将其中包含运势字段的卡牌展示后全部加入手中，禁制：这些牌的总阶数不得大于5。" },
   { name: "下下签", value: "", type: "法术", tier: "一阶", effect: "吟唱。运势x：对对方施加x的易伤，运势6:额外再破坏一张手牌。" },
   { name: "积重难返·折焚尽", value: "2", type: "状态", tier: "二阶", effect: "禁制：对方手牌<=3，生命<=15。无法恢复生命值，无法以除了回合开始抽牌之外的方式获得手牌，所有装备效果失效。" },
-  // 注意：完整数据见下方说明
-];
+  ];
+}
 
-// 由于数据量大，建议你将完整 cardData 放在单独的 data.js 文件中
-// 但为方便，这里只展示结构。你可将完整 CSV 转为 JS 对象数组
+const myCardData = safeGetCardData();
 
-// 实际使用时，请将你提供的全部卡牌按上述格式填入 cardData
-
-const cardDir = 'assets/cards/';
-const grid = document.getElementById('cards-grid');
-const loading = document.getElementById('loading');
-const searchInput = document.getElementById('search');
-let currentCards = [];
-
-// 生成卡牌
 function renderCards(cards) {
   grid.innerHTML = '';
-  let loadedCount = 0;
-  const total = cards.length;
+  if (!cards || cards.length === 0) {
+    loading.style.display = 'block';
+    loading.textContent = '暂无卡牌';
+    return;
+  }
+  loading.style.display = 'none';
 
   cards.forEach(card => {
-    const filePath = `${cardDir}${card.name}.png`;
-    const img = new Image();
-    
-    img.onload = () => {
-      const cardEl = document.createElement('div');
-      cardEl.className = 'card-item';
-      cardEl.innerHTML = `
-        <img class="card-image" src="${filePath}" alt="${card.name}" />
-        <div class="card-label">${card.name}</div>
-      `;
-      cardEl.onclick = () => showCardModal(card, filePath);
-      grid.appendChild(cardEl);
-      
-      loadedCount++;
-      if (loadedCount === total) {
-        loading.style.display = 'none';
-      }
-    };
-    
-    img.onerror = () => {
-      console.error("❌ 图片加载失败:", filePath);
-      loadedCount++;
-      if (loadedCount === total) {
-        loading.style.display = 'none';
-      }
-    };
-    
-    img.src = filePath; // 注意：放在最后，避免缓存问题
+    const filePath = `${CARD_DIR}${card.name}.png`;
+    // 允许 card.image 字段覆盖默认路径（你有的 png 可能自带文件名规范）
+    const imgPath = card.image || filePath;
+
+    const cardEl = document.createElement('div');
+    cardEl.className = 'card-item';
+    cardEl.innerHTML = `
+      <img class="card-image" src="${imgPath}" alt="${card.name}" />
+      <div class="card-label">${card.name}</div>
+    `;
+    cardEl.onclick = () => showCardModal(card, imgPath);
+    // hover glow effect
+    cardEl.onmouseover = () => cardEl.style.boxShadow = '0 20px 60px rgba(109,225,255,0.08)';
+    cardEl.onmouseout = () => cardEl.style.boxShadow = '';
+    grid.appendChild(cardEl);
+
+    // preload to silence 404 errors in console if missing
+    const p = new Image(); p.src = imgPath;
   });
-
-  // 如果 cards 为空
-  if (cards.length === 0) {
-    loading.style.display = 'none';
-  }
 }
 
-// 显示详情
-function showCardModal(card, imagePath) {
-  document.getElementById('modal-name').textContent = card.name;
-  document.getElementById('modal-class').textContent = card.type;
-  document.getElementById('modal-class').className = `class-${card.type}`;
-  document.getElementById('modal-tier').textContent = card.tier;
-  document.getElementById('modal-tier').className = `tier-${card.tier}`;
-  document.getElementById('modal-effect').textContent = card.effect;
-  document.getElementById('modal-value').textContent = card.value || '';
-  document.getElementById('modal-image').src = imagePath;
-  document.getElementById('card-modal').style.display = 'block';
+function showCardModal(card, img) {
+  modal.style.display = 'flex';
+  modalName.textContent = card.name;
+  modalClass.textContent = card.type || '';
+  modalTier.textContent = card.tier || '';
+  modalEffect.textContent = card.effect || '';
+  modalValue.textContent = card.value || '';
+  modalImage.src = img;
+  downloadLink.href = img;
 }
 
-// 筛选
+/* 关闭模态 */
+document.querySelector('.modal .close').onclick = () => modal.style.display = 'none';
+window.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+
+/* 筛选按钮交互（保留原 btn 类名） */
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -278,36 +441,28 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
     const type = btn.dataset.type;
     const query = searchInput.value.toLowerCase();
     const filtered = type === 'all' 
-      ? cardData.filter(c => c.name.toLowerCase().includes(query))
-      : cardData.filter(c => c.type === type && c.name.toLowerCase().includes(query));
+      ? myCardData.filter(c => c.name.toLowerCase().includes(query))
+      : myCardData.filter(c => c.type === type && c.name.toLowerCase().includes(query));
     renderCards(filtered);
   });
 });
 
-// 搜索
+/* 搜索 */
 searchInput.addEventListener('input', () => {
   const type = document.querySelector('.filter-btn.active').dataset.type;
-  const query = searchInput.value.toLowerCase();
+  const q = searchInput.value.toLowerCase();
   const filtered = type === 'all' 
-    ? cardData.filter(c => c.name.toLowerCase().includes(query))
-    : cardData.filter(c => c.type === type && c.name.toLowerCase().includes(query));
+    ? myCardData.filter(c => c.name.toLowerCase().includes(q))
+    : myCardData.filter(c => c.type === type && c.name.toLowerCase().includes(q));
   renderCards(filtered);
 });
 
-// 关闭模态框
-document.querySelector('.close').onclick = () => {
-  document.getElementById('card-modal').style.display = 'none';
-};
-window.onclick = (e) => {
-  if (e.target === document.getElementById('card-modal')) {
-    document.getElementById('card-modal').style.display = 'none';
-  }
-};
-
-// 初始化
+/* 初始渲染 */
 document.addEventListener('DOMContentLoaded', () => {
-  // 你可以在这里加载完整数据（建议从 data.js 引入）
-  // 为演示，我们先用部分数据
-  console.log("正在渲染卡牌，共", cardData.length, "张");
-  renderCards(cardData);
+  // 等待短暂时机，保证 cardData（如果定义在别处）已注入
+  setTimeout(()=> {
+    renderCards(myCardData);
+  }, 200);
+
+  tryLoadHeroImages();
 });
