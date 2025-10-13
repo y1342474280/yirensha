@@ -1,6 +1,5 @@
 // 卡牌数据（从你提供的 CSV 表格中提取）
 const cardData = [
-  const cardData = [
   { name: "妙手空空", value: "", type: "法术", tier: "一阶", effect: "吟唱。禁制：对方手牌>2才能发动。对手洗牌，自己从中摸一张卡牌加入自己手卡。自己没有手牌的场合，额外摸一张。" },
   { name: "偷梁换柱", value: "", type: "法术", tier: "二阶", effect: "吟唱。选择对手两张手牌和自己一张手牌进行交换。" },
   { name: "破魔封禁", value: "3", type: "状态", tier: "二阶", effect: "选定对手2张卡牌暂时移除游戏。" },
