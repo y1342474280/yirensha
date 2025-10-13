@@ -2,8 +2,8 @@
 
 /* ----------------- 配置 ----------------- */
 const HERO_COUNT = 5; // 尝试加载 assets/bg/hero1..hero5.jpg/png
-const HERO_PATH_PREFIX = 'assets/bg/hero'; // hero1.jpg
-const CARD_DIR = 'assets/cards/'; // 保持你现有逻辑
+const HERO_PATH_PREFIX = 'https://cdn.jsdelivr.net/gh/y1342474280/yirensha@main/assets/bg/hero'; // hero1.jpg
+const CARD_DIR = 'https://cdn.jsdelivr.net/gh/y1342474280/yirensha@main/assets/cards/'; // 保持你现有逻辑
 /* ---------------------------------------- */
 
 /* 全局元素 */
