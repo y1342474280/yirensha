@@ -397,9 +397,8 @@ function renderCards(cards) {
   loading.style.display = 'none';
 
   cards.forEach(card => {
-    const filePath = `${CARD_DIR}${card.name}.png`;
-    // 允许 card.image 字段覆盖默认路径（你有的 png 可能自带文件名规范）
-    const imgPath = card.image || filePath;
+    // 使用预检时缓存的 _imgPath（已确认有效）
+    const imgPath = card._imgPath;
 
     const cardEl = document.createElement('div');
     cardEl.className = 'card-item';
@@ -408,13 +407,10 @@ function renderCards(cards) {
       <div class="card-label">${card.name}</div>
     `;
     cardEl.onclick = () => showCardModal(card, imgPath);
-    // hover glow effect
     cardEl.onmouseover = () => cardEl.style.boxShadow = '0 20px 60px rgba(109,225,255,0.08)';
     cardEl.onmouseout = () => cardEl.style.boxShadow = '';
     grid.appendChild(cardEl);
-
-    // preload to silence 404 errors in console if missing
-    const p = new Image(); p.src = imgPath;
+    // 不再需要额外 preload，因为已经验证过
   });
 }
 
@@ -458,11 +454,31 @@ searchInput.addEventListener('input', () => {
 });
 
 /* 初始渲染 */
-document.addEventListener('DOMContentLoaded', () => {
-  // 等待短暂时机，保证 cardData（如果定义在别处）已注入
-  setTimeout(()=> {
-    renderCards(myCardData);
-  }, 200);
+/* 异步预检：只保留有有效图片的卡牌 */
+function filterCardsWithValidImages(cards) {
+  return Promise.all(
+    cards.map(card => {
+      const imgPath = card.image || `${CARD_DIR}${card.name}.png`;
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve({ ...card, _imgPath: imgPath }); // 保留有效路径
+        img.onerror = () => resolve(null); // 图片无效
+        img.src = imgPath;
+      });
+    })
+  ).then(validCards => validCards.filter(Boolean)); // 过滤掉 null
+}
 
+/* 初始渲染（带图片存在性检查） */
+document.addEventListener('DOMContentLoaded', () => {
   tryLoadHeroImages();
+
+  // 延迟确保 cardData 已加载
+  setTimeout(async () => {
+    loading.style.display = 'block';
+    loading.textContent = '正在加载卡牌...';
+
+    const validCards = await filterCardsWithValidImages(myCardData);
+    renderCards(validCards); // 只渲染有图的卡牌
+  }, 200);
 });
