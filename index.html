@@ -1,64 +1,156 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>异人杀 · 自制TCG</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>异人杀 · 官方</title>
+
+  <!-- 字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;500;700&display=swap" rel="stylesheet">
+
+  <!-- 样式 -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- 页面元信息（用于 github pages） -->
+  <meta name="description" content="异人杀 — 自制 TCG 卡牌展示页 / 宣传页" />
 </head>
 <body>
-  <!-- 动态背景 -->
-  <div class="background"></div>
+  <!-- 背景粒子画布 -->
+  <canvas id="bg-canvas" class="bg-canvas"></canvas>
 
-  <!-- 主容器 -->
-  <div class="container">
-    <header>
-      <h1>异人杀</h1>
-      <p>命运交织，万象归流</p>
-      <nav>
-        <button class="filter-btn active" data-type="all">全部</button>
-        <button class="filter-btn" data-type="法术">法术</button>
-        <button class="filter-btn" data-type="状态">状态</button>
-        <button class="filter-btn" data-type="武器">武器</button>
-        <button class="filter-btn" data-type="宝具">宝具</button>
-      </nav>
-      <div class="search-box">
-        <input type="text" id="search" placeholder="搜索卡牌名称..." />
-      </div>
-    </header>
-
-    <main>
-      <div class="loading" id="loading">正在加载卡牌...</div>
-      <div class="cards-grid" id="cards-grid"></div>
-    </main>
-
-    <footer>
-      <p>© 2025 自制卡牌游戏 · 由 <a href="https://github.com/y1342474280" target="_blank">余光</a> 创作</p>
-    </footer>
-  </div>
-
-  <!-- 卡牌详情模态框 -->
-  <div class="modal" id="card-modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <div class="modal-header">
-        <h2 id="modal-name">卡牌名称</h2>
-        <div class="modal-meta">
-          <span id="modal-class"></span>
-          <span id="modal-tier"></span>
+  <!-- 顶部英雄轮播 -->
+  <header class="hero-header">
+    <div class="hero-overlay">
+      <div class="hero-content">
+        <div class="logo">
+          <h1>异人杀</h1>
+          <p class="subtitle">命运交织 · 万象归流</p>
+        </div>
+        <div class="hero-cta">
+          <button id="enter-btn" class="btn-glow">进入卡牌世界</button>
+          <button id="rules-btn" class="btn-ghost">查看游戏规则</button>
         </div>
       </div>
+    </div>
+
+    <div class="hero-carousel" id="hero-carousel" aria-hidden="false">
+      <!-- slides 动态由 JS 插入 -->
+    </div>
+
+    <div class="hero-controls">
+      <div id="carousel-dots" class="dots"></div>
+    </div>
+  </header>
+
+  <!-- 主容器 -->
+  <main class="container">
+    <!-- 小版横幅与简述 -->
+    <section class="intro glass">
+      <div class="intro-left">
+        <h2>欢迎来到《异人杀》</h2>
+        <p>一款玄幻仙侠风的自制卡牌对战游戏。收集、构筑、对决 —— 运气与策略并存。本站为官方卡牌画廊与规则介绍页面。</p>
+      </div>
+      <div class="intro-right">
+        <div class="stat">
+          <div class="num">∞</div>
+          <div class="label">卡牌库</div>
+        </div>
+        <div class="stat">
+          <div class="num">PvP</div>
+          <div class="label">实时对战（计划）</div>
+        </div>
+        <div class="stat">
+          <div class="num">余烬</div>
+          <div class="label">核心机制</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 卡牌画廊 -->
+    <section id="gallery" class="gallery glass">
+      <div class="section-head">
+        <h3>卡牌画廊</h3>
+        <div class="filter-row">
+          <div class="filters">
+            <button class="filter-btn active" data-type="all">全部</button>
+            <button class="filter-btn" data-type="法术">法术</button>
+            <button class="filter-btn" data-type="状态">状态</button>
+            <button class="filter-btn" data-type="武器">武器</button>
+            <button class="filter-btn" data-type="宝具">宝具</button>
+          </div>
+          <input id="search" class="search" type="text" placeholder="搜索卡牌名称..." />
+        </div>
+      </div>
+
+      <div id="cards-grid" class="cards-grid"></div>
+      <div id="loading" class="loading">正在加载卡牌……</div>
+    </section>
+
+    <!-- 游戏规则（折叠式）-->
+    <section id="rules" class="rules glass">
+      <div class="section-head">
+        <h3>游戏规则 · 快速入门</h3>
+        <button id="toggle-rules" class="btn-small">展开 / 收起</button>
+      </div>
+      <div id="rules-content" class="rules-content collapsed">
+        <!-- 下面内容为样例规则，你可以替换成从 card.csv 提取的更详细规则（托管版） -->
+        <article>
+          <h4>基础概念</h4>
+          <p>每位玩家有生命值、手牌、状态区与装备区。卡牌分为：法术 / 状态 / 武器 / 宝具（阶数：一阶 / 二阶 / 三阶）。回合内可打出卡牌、发动效果、攻击对手等。</p>
+        </article>
+        <article>
+          <h4>回合流程（简化）</h4>
+          <ol>
+            <li>回合开始：占卜/判定效果结算</li>
+            <li>摸牌阶段：按规则抽取卡牌</li>
+            <li>出牌阶段：可打出法术/装备/使用状态/发动技能</li>
+            <li>攻击阶段：使用武器发起攻击</li>
+            <li>回合结束：结算余烬、状态等</li>
+          </ol>
+        </article>
+        <article>
+          <h4>特殊关键词</h4>
+          <p><strong>余烬</strong>：部分卡牌在送入墓地后触发额外效果。<br/>
+             <strong>引渡</strong>：支付指定代价以发动替代效果。<br/>
+             <strong>共鸣</strong>：特定条件触发全局效果，只会生效一次/局。</p>
+        </article>
+        <p class="muted">（详细规则可放在一个单独的 markdown 或 pdf 文件链接，此处为首页精简介绍）</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 卡牌详情模态 -->
+  <div id="card-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
       <div class="modal-body">
         <img id="modal-image" src="" alt="卡牌" />
-        <div class="modal-text">
+        <div class="modal-info">
+          <h2 id="modal-name">卡牌名称</h2>
+          <div class="meta-row">
+            <span id="modal-class" class="tag"></span>
+            <span id="modal-tier" class="tag"></span>
+            <span id="modal-value" class="val"></span>
+          </div>
           <p id="modal-effect"></p>
-          <p id="modal-value" class="value"></p>
+          <div class="modal-actions">
+            <button class="btn-glow">收藏</button>
+            <a id="download-link" class="btn-ghost" download>下载卡图</a>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- 底部 -->
+  <footer>
+    <p>© 2025 异人杀 · 自制卡牌游戏 · by <a href="https://github.com/y1342474280" target="_blank" rel="noreferrer">余光</a></p>
+  </footer>
+
+  <!-- 你的原有 cardData + 旧 script.js 应该继续保留或合并到下面脚本之前 -->
+  <!-- 我在下面的 script.js 中会优先检查 window.cardData 是否存在（兼容你原脚本） -->
+
+  <!-- 脚本 -->
   <script src="script.js"></script>
 </body>
 </html>
