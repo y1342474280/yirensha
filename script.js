@@ -222,6 +222,11 @@ function renderCards(cards) {
     const img = new Image();
     img.src = filePath;
     img.onload = () => {
+      console.log("✅ 图片加载成功:", filePath);
+    };
+    img.onerror = () => {
+      console.error("❌ 图片加载失败:", filePath);
+    };
       const cardEl = document.createElement('div');
       cardEl.className = 'card-item';
       cardEl.innerHTML = `
@@ -287,5 +292,6 @@ window.onclick = (e) => {
 document.addEventListener('DOMContentLoaded', () => {
   // 你可以在这里加载完整数据（建议从 data.js 引入）
   // 为演示，我们先用部分数据
+  console.log("正在渲染卡牌，共", cards.length, "张");
   renderCards(cardData);
 });
