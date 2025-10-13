@@ -217,16 +217,14 @@ let currentCards = [];
 // 生成卡牌
 function renderCards(cards) {
   grid.innerHTML = '';
+  let loadedCount = 0;
+  const total = cards.length;
+
   cards.forEach(card => {
     const filePath = `${cardDir}${card.name}.png`;
     const img = new Image();
-    img.src = filePath;
+    
     img.onload = () => {
-      console.log("✅ 图片加载成功:", filePath);
-    };
-    img.onerror = () => {
-      console.error("❌ 图片加载失败:", filePath);
-    };
       const cardEl = document.createElement('div');
       cardEl.className = 'card-item';
       cardEl.innerHTML = `
@@ -235,10 +233,28 @@ function renderCards(cards) {
       `;
       cardEl.onclick = () => showCardModal(card, filePath);
       grid.appendChild(cardEl);
+      
+      loadedCount++;
+      if (loadedCount === total) {
+        loading.style.display = 'none';
+      }
     };
-    // 如果图片不存在，不显示（静默跳过）
+    
+    img.onerror = () => {
+      console.error("❌ 图片加载失败:", filePath);
+      loadedCount++;
+      if (loadedCount === total) {
+        loading.style.display = 'none';
+      }
+    };
+    
+    img.src = filePath; // 注意：放在最后，避免缓存问题
   });
-  loading.style.display = 'none';
+
+  // 如果 cards 为空
+  if (cards.length === 0) {
+    loading.style.display = 'none';
+  }
 }
 
 // 显示详情
