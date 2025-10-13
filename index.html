@@ -3,213 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>我的自制卡牌集</title>
-  <style>
-    body {
-      font-family: "Microsoft YaHei", sans-serif;
-      background-color: #0a0a0a;
-      color: white;
-      margin: 0;
-      padding: 20px;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    h1 {
-      color: #e6d7b9;
-      font-size: 2.5em;
-    }
-
-    .loading {
-      text-align: center;
-      color: #aaa;
-      font-size: 1.2em;
-    }
-
-    .cards-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 15px;
-      max-width: 1400px;
-      margin: auto;
-    }
-
-    .card {
-      width: 180px;
-      height: 255px;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      background-color: #111;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .card:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.7);
-    }
-
-    .card img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.9);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .modal img {
-      max-width: 90%;
-      max-height: 90%;
-      border-radius: 10px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.8);
-    }
-
-    .close {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      font-size: 2rem;
-      color: white;
-      cursor: pointer;
-      z-index: 1001;
-    }
-
-    .card-name {
-      position: absolute;
-      bottom: 5px;
-      left: 0;
-      right: 0;
-      text-align: center;
-      font-size: 0.8em;
-      color: #ccc;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .card:hover .card-name {
-      opacity: 1;
-    }
-  </style>
+  <title>玄渊卡牌 · 自制TCG</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- 动态背景 -->
+  <div class="background"></div>
 
-  <header>
-    <h1>我的自制卡牌集</h1>
-    <p>正在加载卡牌……</p>
-  </header>
+  <!-- 主容器 -->
+  <div class="container">
+    <header>
+      <h1>玄渊卡牌</h1>
+      <p>命运交织，万象归流</p>
+      <nav>
+        <button class="filter-btn active" data-type="all">全部</button>
+        <button class="filter-btn" data-type="法术">法术</button>
+        <button class="filter-btn" data-type="状态">状态</button>
+        <button class="filter-btn" data-type="武器">武器</button>
+        <button class="filter-btn" data-type="宝具">宝具</button>
+      </nav>
+      <div class="search-box">
+        <input type="text" id="search" placeholder="搜索卡牌名称..." />
+      </div>
+    </header>
 
-  <div class="cards-container" id="cards"></div>
+    <main>
+      <div class="loading" id="loading">正在加载卡牌...</div>
+      <div class="cards-grid" id="cards-grid"></div>
+    </main>
 
-  <div class="modal" id="modal">
-    <span class="close">&times;</span>
-    <img id="modal-img" src="" alt="卡牌预览" />
+    <footer>
+      <p>© 2025 自制卡牌游戏 · 由 <a href="https://github.com/yourusername" target="_blank">yourusername</a> 创作</p>
+    </footer>
   </div>
 
-  <script>
-    // 所有卡牌名称（你提供的完整列表）
-    const allCardNames = [
-      "妙手空空", "偷梁换柱", "破魔封禁", "百辟刀", "月下美人", "痛觉残留",
-      "踏雪寻梅·宿穷冬", "紧急支援", "妙品莲花", "星陨", "星尘祈愿", "鲜血革命",
-      "生生流转", "巫毒娃娃", "细风扶柳", "不语钟", "唤魂铃", "伤心奇花", "神风",
-      "无效无效", "枯荣乙木神光", "净化", "卸力", "万宝符", "损魂烧命", "焚心断念",
-      "反复", "安如山", "不可大意", "斗转星移", "伏兵", "乾坤逆转", "预支未来",
-      "饮血剑", "终焉之刻", "穷兵黩武", "收之桑榆", "波动命运", "命运预兆", "蓄谋",
-      "编织命运", "大繁荣", "仙人抚顶", "浮光掠影", "分岔路口", "刻刻！", "松上雪",
-      "燕筑垒", "抱石眠", "不动明王", "惊风刃", "无限武装无限", "大海捞针", "定风珠",
-      "鸿蒙朴石", "占星宝珠", "福星", "有舍有得", "万法归流·恨江去", "诸武百炼·镂金石",
-      "众妙之门·玉中人", "心腹之患", "借力打力", "饮民血", "灵力充沛", "分光对影仪",
-      "蓄势", "天佑", "风驰电掣", "无畏", "黑暗游戏", "愚赶山", "巧夺天工", "造器鬼斧",
-      "兵粮寸断", "神净讨魔", "吾主在此", "流风回雪", "盗墓者", "奇异飓风", "潜能爆发",
-      "七星连珠", "武装解除", "连环", "精挑细选", "笼鸟勿飞", "长空危雀", "捕风捉影",
-      "狂风刃卷", "福满乾坤", "百无禁忌", "灾星", "慈航屠刀", "底牌", "奇袭鬼刺",
-      "不详之刃", "还施彼身", "世界树幼苗", "聚能法杖", "生死簿", "督山点灵令",
-      "赶山覆海法剑", "司天布序神卷", "上相壶", "锤炼", "昭昭暗渡", "飞星传恨",
-      "神之一手", "万宝槌", "精心保养", "金窍兑隅·杀收宫", "风卷残云", "瞳瞳鬼眸",
-      "香俱沉", "流云索阴", "迟徘徊", "烬彩鎏金", "魔气腾腾", "骤雨梨花枪", "拒岭中",
-      "愁云锁暮", "密云锢天", "天人五衰", "制蛮斧", "镜花水月", "电表倒转", "福运昌隆",
-      "福祸相依", "命理天成", "绝处逢生", "潇湘八剑", "潇湘水云", "风不定", "交换人生",
-      "兼相爱", "有福同享", "有难同当", "卸甲强袭", "同花顺", "热雪", "慈悲渡魂灵刃",
-      "议八辟", "伏魔金钵", "节制", "剔骨", "君韬危", "折光逆剑", "伏兵", "提萃",
-      "杖势欺人", "狂暴", "落宝金钱", "正始两仪·帝观元", "病前春", "罗刹三顾·不空劫",
-      "乌从欲", "地巫祝", "南疆毒囊", "脱煞胎", "藏祸心", "万毒菱华", "秘血汞", "硕鼠",
-      "屯田", "雪中送碳", "朽木", "变废为宝", "盛放", "愚蠢举动", "糜妨世",
-      "请诣太素·授玄珠", "朔风霰雪", "仪对影", "靖平敕", "烬火燎原", "藏纳宫",
-      "离烬不息·朝天阙", "心狩眼明·百目鬼", "斛量灾", "鬼面", "月华流照", "九莲宝灯",
-      "出千", "蕴宝瓶", "瑞气云", "转珠舸", "天齐满", "邀战", "妙道化生石", "以守为攻",
-      "朝社参", "龟甲奇占", "狂潮", "袖里乾坤", "藏影诡谲·浮云身", "芥子须弥", "馈赠",
-      "上上签", "下下签", "积重难返·折焚尽", "清且苦", "明牌", "乘风起"
-    ];
+  <!-- 卡牌详情模态框 -->
+  <div class="modal" id="card-modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div class="modal-header">
+        <h2 id="modal-name">卡牌名称</h2>
+        <div class="modal-meta">
+          <span id="modal-class"></span>
+          <span id="modal-tier"></span>
+        </div>
+      </div>
+      <div class="modal-body">
+        <img id="modal-image" src="" alt="卡牌" />
+        <div class="modal-text">
+          <p id="modal-effect"></p>
+          <p id="modal-value" class="value"></p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    const cardDir = 'cards/';
-    const container = document.getElementById('cards');
-    let loadedCount = 0;
-
-    function tryLoadCard(name) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        const filePath = `${cardDir}${name}.png`;
-
-        img.onload = () => {
-          // 图片存在，创建卡片
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <img src="${filePath}" alt="${name}" />
-            <div class="card-name">${name}</div>
-          `;
-          card.onclick = () => {
-            document.getElementById('modal-img').src = filePath;
-            document.getElementById('modal').style.display = 'flex';
-          };
-          container.appendChild(card);
-          loadedCount++;
-          resolve(true);
-        };
-
-        img.onerror = () => {
-          // 图片不存在，跳过
-          resolve(false);
-        };
-
-        img.src = filePath;
-      });
-    }
-
-    // 开始加载所有卡牌
-    (async () => {
-      const promises = allCardNames.map(name => tryLoadCard(name));
-      await Promise.all(promises);
-      document.querySelector('header p').textContent = `共加载 ${loadedCount} 张卡牌`;
-    })();
-
-    // 模态框关闭
-    document.querySelector('.close').onclick = () => {
-      document.getElementById('modal').style.display = 'none';
-    };
-    window.onclick = (e) => {
-      if (e.target === document.getElementById('modal')) {
-        document.getElementById('modal').style.display = 'none';
-      }
-    };
-  </script>
-
+  <script src="script.js"></script>
 </body>
 </html>
