@@ -44,7 +44,7 @@ async function initData() {
     let cardSheet = workbook.SheetNames.find(n => n.includes('游戏卡牌')) || workbook.SheetNames[0];
     const cardRaw = XLSX.utils.sheet_to_json(workbook.Sheets[cardSheet]);
     allCards = cardRaw.map(row => ({
-      name: row['名称'] || row['name'] || '未知',
+      name: row['卡牌名称'] || row['name'] || '未知',
       value: row['数值'] || row['value'] || '-',
       type: row['类型'] || row['type'] || '法术',
       tier: row['阶数'] || row['tier'] || '一阶',
