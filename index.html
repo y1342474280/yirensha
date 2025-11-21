@@ -1,155 +1,158 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>异人杀 · 官方</title>
+  <title>异人杀 · 官方 | 命运交织</title>
 
-  <!-- 字体 -->
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@300;500;700&display=swap" rel="stylesheet">
 
-  <!-- 样式 -->
   <link rel="stylesheet" href="style.css" />
-
-  <!-- 页面元信息（用于 github pages） -->
-  <meta name="description" content="异人杀 — 自制 TCG 卡牌展示页 / 宣传页" />
+  <meta name="description" content="异人杀 — 自制 TCG 卡牌展示页" />
 </head>
 <body>
-  <!-- 背景粒子画布 -->
   <canvas id="bg-canvas" class="bg-canvas"></canvas>
+  
+  <div class="vignette"></div>
 
-  <!-- 顶部英雄轮播 -->
   <header class="hero-header">
     <div class="hero-overlay">
-      <div class="hero-content">
-        <div class="logo">
-          <h1>异人杀</h1>
-          <p class="subtitle">命运交织 · 万象归流</p>
+      <div class="hero-content scroll-animate">
+        <div class="logo-wrapper">
+          <h1 class="glitch-text" data-text="异人杀">异人杀</h1>
         </div>
+        <p class="subtitle">命运交织 · 万象归流</p>
         <div class="hero-cta">
-          <button id="enter-btn" class="btn-glow">进入卡牌世界</button>
-          <button id="rules-btn" class="btn-ghost">查看游戏规则</button>
+          <button id="enter-btn" class="btn-glow">
+            <span>进入卡牌世界</span>
+            <div class="btn-particles"></div>
+          </button>
+          <button id="rules-btn" class="btn-ghost">查看天道法则</button>
         </div>
       </div>
     </div>
 
-    <div class="hero-carousel" id="hero-carousel" aria-hidden="false">
-      <!-- slides 动态由 JS 插入 -->
-    </div>
+    <div class="hero-carousel" id="hero-carousel">
+      </div>
 
     <div class="hero-controls">
       <div id="carousel-dots" class="dots"></div>
     </div>
   </header>
 
-  <!-- 主容器 -->
   <main class="container">
-    <!-- 小版横幅与简述 -->
-    <section class="intro glass">
+    <section class="intro glass scroll-animate">
       <div class="intro-left">
-        <h2>欢迎来到《异人杀》</h2>
-        <p>一款玄幻仙侠风的自制卡牌对战游戏。收集、构筑、对决 —— 运气与策略并存。本站为官方卡牌画廊与规则介绍页面。</p>
+        <h2>欢迎入局</h2>
+        <p>天地为盘，众生为子。一款玄幻仙侠风卡牌对战游戏。收集、构筑、博弈 —— 气运与算计并存。</p>
       </div>
       <div class="intro-right">
-        <div class="stat">
-          <div class="num">200+</div>
-          <div class="label">卡牌库</div>
+        <div class="stat-box">
+          <div class="stat-ring"></div>
+          <div class="stat-content">
+            <div class="num">200+</div>
+            <div class="label">万象卡库</div>
+          </div>
         </div>
-        <div class="stat">
-          <div class="num">PvP</div>
-          <div class="label">实时对战</div>
-        </div>
-        <div class="stat">
-          <div class="num">等阶</div>
-          <div class="label">核心机制</div>
+        <div class="stat-box">
+          <div class="stat-ring"></div>
+          <div class="stat-content">
+            <div class="num">PvP</div>
+            <div class="label">神通斗法</div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 卡牌画廊 -->
-    <section id="gallery" class="gallery glass">
+    <section id="gallery" class="gallery glass scroll-animate">
       <div class="section-head">
-        <h3>卡牌画廊</h3>
+        <h3><span class="icon">✦</span> 卡牌画廊</h3>
         <div class="filter-row">
           <div class="filters">
-            <button class="filter-btn active" data-type="all">全部</button>
+            <button class="filter-btn active" data-type="all">万象</button>
             <button class="filter-btn" data-type="法术">法术</button>
             <button class="filter-btn" data-type="状态">状态</button>
             <button class="filter-btn" data-type="武器">武器</button>
             <button class="filter-btn" data-type="宝具">宝具</button>
           </div>
-          <input id="search" class="search" type="text" placeholder="搜索卡牌名称..." />
+          <div class="search-wrapper">
+            <input id="search" class="search" type="text" placeholder="寻觅卡牌..." />
+            <div class="search-focus-border"></div>
+          </div>
         </div>
       </div>
 
       <div id="cards-grid" class="cards-grid"></div>
-      <div id="loading" class="loading">正在加载卡牌……</div>
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>正在从虚空中召唤卡牌...</p>
+      </div>
     </section>
 
-    <!-- 游戏规则（折叠式）-->
-    <section id="rules" class="rules glass">
+    <section id="rules" class="rules glass scroll-animate">
       <div class="section-head">
-        <h3>游戏规则 · 快速入门</h3>
-        <button id="toggle-rules" class="btn-small">展开 / 收起</button>
+        <h3><span class="icon">❖</span> 规则 · 快速入门</h3>
+        <button id="toggle-rules" class="btn-small">展开卷轴</button>
       </div>
       <div id="rules-content" class="rules-content collapsed">
-        <!-- 下面内容为样例规则，你可以替换成从 card.csv 提取的更详细规则（托管版） -->
-        <article>
-          <h4>基础概念</h4>
-          <p>每位玩家有生命值、手牌、状态区与装备区。卡牌分为：法术 / 状态 / 武器 / 宝具（阶数：一阶 / 二阶 / 三阶）。回合内可打出卡牌、发动效果、攻击对手等。</p>
-        </article>
-        <article>
-          <h4>回合流程（简化）</h4>
-          <ol>
-            <li>回合开始：占卜/判定效果结算</li>
-            <li>摸牌阶段：按规则抽取卡牌</li>
-            <li>出牌阶段：可打出法术/装备/使用状态/发动技能</li>
-            <li>攻击阶段：使用武器发起攻击</li>
-            <li>回合结束：结算状态、技能等</li>
-          </ol>
-        </article>
-        <article>
-          <h4>特殊关键词</h4>
-          <p><strong>余烬</strong>：卡牌在送入墓地后拥有额外效果。<br/>
-             <strong>引渡</strong>：放弃升阶从牌河定向抽牌。<br/>
-             <strong>运势</strong>：投掷骰子，根据点数获得额外效果，运气决定一切...坏运气也是。<br/>
-             <strong>占卜</strong>：观看牌顶卡牌并任意调换顺序，局势尽在掌握。<br/>
-             <strong>共鸣</strong>：特定条件触发效果，随机万变。</p>
-        </article>
-        <p class="muted">（详细规则请查看官方pdf文档，此处为首页精简介绍）</p>
+        <div class="rules-inner">
+          <article>
+            <h4>基础概念</h4>
+            <p>每位修士拥有生命值、手牌、状态区与装备区。卡牌分为：法术 / 状态 / 武器 / 宝具（阶数：一阶 / 二阶 / 三阶）。</p>
+          </article>
+          <article>
+            <h4>特殊关键词</h4>
+            <ul class="keywords-list">
+              <li><strong class="kw-fire">余烬</strong>：卡牌在送入墓地后，亦可发挥余热。</li>
+              <li><strong class="kw-void">引渡</strong>：放弃升阶，从牌河定向汲取力量。</li>
+              <li><strong class="kw-luck">运势</strong>：投掷骰子，天命难违。</li>
+              <li><strong class="kw-star">占卜</strong>：窥探未来，逆天改命。</li>
+            </ul>
+          </article>
+          <p class="muted" style="margin-top:1rem">（详细规则请参阅完整天书）</p>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- 卡牌详情模态 -->
   <div id="card-modal" class="modal">
+    <div class="modal-backdrop"></div>
     <div class="modal-content">
       <span class="close">&times;</span>
       <div class="modal-body">
-        <img id="modal-image" src="" alt="卡牌" />
+        <div class="modal-img-wrapper">
+          <img id="modal-image" src="" alt="卡牌" />
+          <div class="modal-shine"></div>
+        </div>
         <div class="modal-info">
-          <h2 id="modal-name">卡牌名称</h2>
-          <div class="meta-row">
-            <span id="modal-class" class="tag"></span>
-            <span id="modal-tier" class="tag"></span>
+          <div class="info-header">
+             <h2 id="modal-name">卡牌名称</h2>
+             <div class="info-badges">
+               <span id="modal-tier" class="tag tier-tag"></span>
+               <span id="modal-class" class="tag type-tag"></span>
+             </div>
+          </div>
+          <div class="modal-stats">
+            <span class="stat-label">数值/消耗</span>
             <span id="modal-value" class="val"></span>
           </div>
-          <p id="modal-effect"></p>
+          <div class="divider"></div>
+          <p id="modal-effect" class="effect-text"></p>
           <div class="modal-actions">
-            <button class="btn-glow">收藏</button>
-            <a id="download-link" class="btn-ghost" download>下载卡图</a>
+            <button class="btn-glow">加入构筑</button>
+            <a id="download-link" class="btn-ghost" download>下载卡面</a>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 底部 -->
   <footer>
-    <p>© 2025 异人杀 · 自制卡牌游戏 · by <a href="https://github.com/y1342474280" target="_blank" rel="noreferrer">余光</a></p>
+    <p>© 2025 异人杀 · <span style="color:var(--accent-1)">余光</span> 监制</p>
   </footer>
 
-  <!-- 脚本 -->
   <script src="script.js"></script>
 </body>
 </html>
