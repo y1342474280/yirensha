@@ -1,269 +1,244 @@
-/* ========= 异人杀：核心交互脚本 (Excel 动态版) ========= */
+/* ========= 异人杀：天道引擎 (Core Script) ========= */
 
-/* ----------------- 配置区 ----------------- */
-const HERO_COUNT = 5; 
-const HERO_PATH_PREFIX = 'https://cdn.jsdelivr.net/gh/y1342474280/yirensha@main/assets/bg/hero';
-const CARD_DIR = 'https://cdn.jsdelivr.net/gh/y1342474280/yirensha@main/assets/cards/';
-
-// [重要] 这里设置你的 Excel 文件路径
-// 如果文件在根目录，写 './cards.xlsx'
-// 如果在 assets 文件夹，写 './assets/cards.xlsx'
-const EXCEL_PATH = './assets/cards.xlsx'; 
+/* 配置 */
+// 注意：请将你的 card.xlsx 文件放在网站根目录，或者 assets 文件夹内
+const DATA_SOURCE = 'assets/card.xlsx'; 
+const CARD_IMAGE_PATH = 'assets/cards/'; // 假设你把之前的PNG都放在这
+const HERO_BG_PATH = 'assets/bg/hero';   // 英雄背景图前缀
 
 /* DOM 元素 */
-const carouselEl = document.getElementById('hero-carousel');
-const dotsEl = document.getElementById('carousel-dots');
 const grid = document.getElementById('cards-grid');
-const loading = document.getElementById('loading');
+const loading = document.getElementById('loading-state');
 const modal = document.getElementById('card-modal');
+const searchInput = document.getElementById('search-input');
+const heroLayer = document.getElementById('hero-bg-layer');
 
-/* ================= 1. Excel 数据加载核心逻辑 ================= */
+/* 全局数据缓存 */
+let allCardData = [];
 
-// 字段映射：把 Excel 的中文表头 映射为 代码里的英文属性
-const FIELD_MAP = {
-  '名称': 'name',
-  '数值': 'value',
-  '类型': 'type',
-  '阶数': 'tier',
-  '效果': 'effect',
-  '图片': 'image' // 可选，如果Excel里有图片链接列
-};
-
-async function loadCardDataFromExcel() {
+/* ================= 1. 核心：读取 Excel ================= */
+async function initGameData() {
   try {
-    loading.style.display = 'block';
-    loading.innerHTML = '<div class="spinner"></div><p>正在读取天道金书 (解析 Excel)...</p>';
+    // 1. 获取 Excel 文件
+    const response = await fetch(DATA_SOURCE);
+    if (!response.ok) {
+        // 尝试去 assets 找找
+        const response2 = await fetch('assets/' + DATA_SOURCE);
+        if(!response2.ok) throw new Error("无法找到 card.xlsx，请确保文件已上传。");
+        var arrayBuffer = await response2.arrayBuffer();
+    } else {
+        var arrayBuffer = await response.arrayBuffer();
+    }
 
-    // 1. 下载 Excel 文件
-    const response = await fetch(EXCEL_PATH);
-    if (!response.ok) throw new Error("无法找到 Excel 文件，请检查路径");
-    
-    const arrayBuffer = await response.arrayBuffer();
-
-    // 2. 使用 SheetJS 解析
+    // 2. 解析
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-    // 3. 获取指定工作表 "游戏卡牌" (如果没有这个名字，就取第一个表)
-    const sheetName = workbook.SheetNames.includes("游戏卡牌") ? "游戏卡牌" : workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-
+    
+    // 3. 寻找 "游戏卡牌" sheet
+    // 如果找不到中文名，就默认取第4个sheet(通常是游戏卡牌)，或者第1个
+    let targetSheetName = workbook.SheetNames.find(name => name.includes('游戏卡牌'));
+    if (!targetSheetName) targetSheetName = workbook.SheetNames[0];
+    
+    const worksheet = workbook.Sheets[targetSheetName];
+    
     // 4. 转换为 JSON
-    const rawData = XLSX.utils.sheet_to_json(worksheet);
-
-    // 5. 数据清洗与映射
-    const cleanData = rawData.map(row => {
-      const newCard = {};
-      // 遍历每一列，转换 key
-      for (let key in row) {
-        // 去除空格
-        const cleanKey = key.trim();
-        const mappedKey = FIELD_MAP[cleanKey] || cleanKey; // 如果在映射表里就转英文，否则保留原名
-        newCard[mappedKey] = row[key];
-      }
-      
-      // 处理一下空值
-      if(!newCard.tier) newCard.tier = "一阶"; 
-      if(!newCard.value) newCard.value = "";
-      
-      return newCard;
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    
+    // 5. 格式化数据 (映射中文列名 -> 英文Key)
+    allCardData = jsonData.map(row => {
+      return {
+        name: row['名称'] || '无名之辈',
+        value: row['数值'] || '-',
+        type: row['类型'] || '未知',
+        tier: row['阶数'] || '凡阶',
+        effect: row['效果'] || '此物平平无奇，并无特效。',
+        // 如果Excel没图，就用名字拼路径
+        image: `${CARD_IMAGE_PATH}${row['名称']}.png`
+      };
     });
 
-    console.log("成功加载卡牌数据:", cleanData);
-    return cleanData;
+    console.log(`天书已解析，共收录 ${allCardData.length} 张卡牌。`);
+    renderCards(allCardData);
 
-  } catch (error) {
-    console.error("加载失败:", error);
-    loading.innerHTML = `<p style="color:var(--accent-3)">数据读取失败: ${error.message}<br>请确保 Excel 文件已上传且名称正确。</p>`;
-    return [];
+  } catch (err) {
+    console.error(err);
+    loading.innerHTML = `<p style="color:#a83636">天机遮蔽，读取失败。<br>${err.message}</p>`;
   }
 }
 
-/* ================= 2. 视觉与交互 (保持炫酷) ================= */
-
-// --- 3D Tilt ---
-function init3DTilt(element) {
-  element.addEventListener('mousemove', (e) => {
-    const rect = element.getBoundingClientRect();
-    const x = e.clientX - rect.left; 
-    const y = e.clientY - rect.top;  
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateX = ((y - centerY) / centerY) * -10; 
-    const rotateY = ((x - centerX) / centerX) * 10;  
-    element.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
-  });
-  element.addEventListener('mouseleave', () => {
-    element.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
-  });
-}
-
-// --- 粒子背景 ---
-(function particleBg(){
-  const canvas = document.getElementById('bg-canvas');
-  if(!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let w, h, particles = [];
-  function resize(){ w=canvas.width=window.innerWidth; h=canvas.height=window.innerHeight; }
-  window.addEventListener('resize', resize);
-  resize();
-  class Particle {
-    constructor() { this.reset(); }
-    reset() {
-      this.x = Math.random() * w; this.y = Math.random() * h;
-      this.size = Math.random() * 2;
-      this.speedX = Math.random() * 0.5 - 0.25; this.speedY = Math.random() * 0.5 - 0.25;
-      this.life = Math.random() * 0.5 + 0.5;
-      this.color = Math.random() > 0.5 ? '77, 238, 234' : '116, 0, 216';
-    }
-    update() {
-      this.x += this.speedX; this.y += this.speedY;
-      if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) this.reset();
-    }
-    draw() {
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${this.color}, ${this.life * 0.5})`; ctx.fill();
-    }
-  }
-  for(let i=0; i<Math.floor(w*h/15000); i++) particles.push(new Particle());
-  function animate() {
-    ctx.clearRect(0, 0, w, h);
-    particles.forEach(p => { p.update(); p.draw(); });
-    requestAnimationFrame(animate);
-  }
-  animate();
-})();
-
-/* ================= 3. 轮播系统 ================= */
-let heroSlides = [];
-let heroIndex = 0;
-function tryLoadHeroImages() {
-  for (let i = 1; i <= HERO_COUNT; i++) {
-    const div = document.createElement('div');
-    div.className = 'hero-slide';
-    carouselEl.appendChild(div);
-    const img = new Image();
-    img.onload = () => {
-      div.style.backgroundImage = `url('${img.src}')`;
-      heroSlides.push(div);
-      createDot(heroSlides.length - 1);
-      if (heroSlides.length === 1) div.classList.add('active');
-    };
-    img.src = `${HERO_PATH_PREFIX}${i}.jpg`;
-  }
-  setInterval(() => {
-    if(heroSlides.length < 2) return;
-    heroIndex = (heroIndex + 1) % heroSlides.length;
-    heroSlides.forEach(s => s.classList.remove('active'));
-    heroSlides[heroIndex].classList.add('active');
-    Array.from(dotsEl.children).forEach((b,i) => b.classList.toggle('active', i===heroIndex));
-  }, 6000);
-}
-function createDot(idx){
-  const btn = document.createElement('button');
-  if (idx === 0) btn.classList.add('active');
-  dotsEl.appendChild(btn);
-}
-
-/* ================= 4. 渲染与业务逻辑 ================= */
-let globalCardData = []; // 存储解析后的数据
+/* ================= 2. 渲染系统 ================= */
 
 function renderCards(cards) {
   grid.innerHTML = '';
-  if (!cards || cards.length === 0) {
-    loading.style.display = 'block';
-    loading.innerHTML = '<p>暂无卡牌数据，请检查筛选或数据源。</p>';
-    return;
-  }
   loading.style.display = 'none';
 
-  cards.forEach((card, index) => {
+  if (cards.length === 0) {
+    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#666">未寻得相关法门。</p>';
+    return;
+  }
+
+  cards.forEach(card => {
     const cardEl = document.createElement('div');
     cardEl.className = 'card-item';
-    cardEl.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.03}s`;
     
-    // 智能判断图片：如果Excel没填图片，就用名字去 assets 找
-    let imgUrl = card.image; 
-    if (!imgUrl) {
-      imgUrl = `${CARD_DIR}${card.name}.png`; // 默认 png
-    }
-
+    // 简单的懒加载与错误处理
+    const imgPath = card.image;
+    
     cardEl.innerHTML = `
-      <img class="card-image" src="${imgUrl}" loading="lazy" onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(45deg, #1a1f2e, #2a2f3e)'" alt="${card.name}" />
-      <div class="card-label">${card.name}</div>
+      <div class="card-inner">
+        <img class="card-img" src="${imgPath}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x450?text=${encodeURIComponent(card.name)}'">
+        <div class="card-name-tag">${card.name}</div>
+      </div>
     `;
+
+    // 点击事件
+    cardEl.onclick = () => openModal(card, cardEl.querySelector('img').src);
     
-    cardEl.onclick = () => showCardModal(card, imgUrl);
-    init3DTilt(cardEl);
     grid.appendChild(cardEl);
   });
 }
 
-function showCardModal(card, img) {
+/* ================= 3. 交互与特效 ================= */
+
+/* 详情模态框 */
+function openModal(card, imgSrc) {
   modal.style.display = 'flex';
+  // 强制重绘以触发 transition
   setTimeout(() => modal.classList.add('show'), 10);
+
+  document.getElementById('modal-name').textContent = card.name;
+  document.getElementById('modal-tier').textContent = card.tier;
+  document.getElementById('modal-type').textContent = card.type;
+  document.getElementById('modal-value').textContent = card.value;
+  document.getElementById('modal-img').src = imgSrc;
   
-  document.getElementById('modal-name').textContent = card.name || '未知';
-  document.getElementById('modal-class').textContent = card.type || '未知';
-  document.getElementById('modal-tier').textContent = card.tier || '-';
-  document.getElementById('modal-effect').innerHTML = highlightKeywords(card.effect || '');
-  document.getElementById('modal-value').textContent = card.value || '-';
-  
-  // 模态框图片处理
-  const modalImg = document.getElementById('modal-image');
-  modalImg.src = img;
-  modalImg.onerror = () => { modalImg.src = 'https://via.placeholder.com/300x400?text=No+Image'; };
-  
-  document.getElementById('download-link').href = img;
+  // 关键词高亮 (根据你的规则文件定制)
+  let effectHtml = card.effect;
+  const keywords = ['吟唱', '速攻', '禁制', '余烬', '引渡', '运势', '占卜', '共鸣', '反制'];
+  keywords.forEach(kw => {
+    const regex = new RegExp(kw, 'g');
+    effectHtml = effectHtml.replace(regex, `<span style="color:#d4af37;font-weight:bold">${kw}</span>`);
+  });
+  document.getElementById('modal-effect').innerHTML = effectHtml;
 }
 
-function highlightKeywords(text) {
-  if(!text) return '';
-  // 将字符串转为 String 避免报错
-  const str = String(text); 
-  return str.replace(/(吟唱|速攻|禁制|余烬|运势|占卜|引渡|共鸣|反制|状态|法术|武器|宝具)/g, '<span style="color:var(--accent-1);font-weight:bold;">$1</span>');
+// 关闭模态框
+document.querySelector('.close-btn').onclick = closeModal;
+document.querySelector('.modal-backdrop').onclick = closeModal;
+function closeModal() {
+  modal.classList.remove('show');
+  setTimeout(() => modal.style.display = 'none', 300);
 }
 
-/* 筛选逻辑 */
-function filterGrid() {
-  const typeBtn = document.querySelector('.filter-btn.active');
-  const type = typeBtn ? typeBtn.dataset.type : 'all';
-  const q = document.getElementById('search').value.toLowerCase();
-  
-  const filtered = globalCardData.filter(c => {
-    const cName = c.name ? c.name.toLowerCase() : '';
-    const cType = c.type || '';
+// 筛选功能
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    // 样式切换
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
     
-    const matchType = type === 'all' || cType === type;
-    const matchName = cName.includes(q);
-    return matchType && matchName;
+    const type = e.target.dataset.type;
+    const searchText = searchInput.value.trim();
+    applyFilter(type, searchText);
+  });
+});
+
+// 搜索功能
+searchInput.addEventListener('input', (e) => {
+  const type = document.querySelector('.filter-btn.active').dataset.type;
+  applyFilter(type, e.target.value.trim());
+});
+
+function applyFilter(type, search) {
+  const filtered = allCardData.filter(c => {
+    const matchType = (type === 'all') || (c.type === type);
+    const matchSearch = c.name.includes(search) || c.effect.includes(search);
+    return matchType && matchSearch;
   });
   renderCards(filtered);
 }
 
-/* 事件绑定 */
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    filterGrid();
+/* ================= 4. 氛围特效 (金粉粒子) ================= */
+const canvas = document.getElementById('spirit-dust');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+class Particle {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.size = Math.random() * 2 + 0.5;
+    this.speedY = Math.random() * -0.5 - 0.1; // 向上漂浮
+    this.speedX = Math.random() * 0.4 - 0.2;
+    this.opacity = Math.random() * 0.5;
+    this.fade = Math.random() * 0.01 + 0.005;
+  }
+  update() {
+    this.y += this.speedY;
+    this.x += this.speedX;
+    this.opacity -= this.fade;
+    if (this.opacity <= 0 || this.y < 0) this.reset();
+  }
+  draw() {
+    ctx.fillStyle = `rgba(212, 175, 55, ${this.opacity})`; // 金色
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function initParticles() {
+  resizeCanvas();
+  for(let i=0; i<60; i++) particles.push(new Particle());
+  animateParticles();
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.update();
+    p.draw();
   });
-});
-document.getElementById('search').addEventListener('input', filterGrid);
-document.querySelector('.close').onclick = () => { modal.classList.remove('show'); setTimeout(()=>modal.style.display='none',300); };
-window.onclick = e => { if(e.target === modal) document.querySelector('.close').click(); };
+  requestAnimationFrame(animateParticles);
+}
 
-/* 初始化 */
-document.addEventListener('DOMContentLoaded', async () => {
-  tryLoadHeroImages();
+window.addEventListener('resize', resizeCanvas);
+
+/* ================= 5. 英雄背景轮播 ================= */
+let heroIndex = 1;
+function rotateHeroBg() {
+  // 简单的背景切换逻辑，假设有 hero1.jpg 到 hero5.jpg
+  const img = new Image();
+  const nextIndex = (heroIndex % 5) + 1;
+  const url = `${HERO_BG_PATH}${nextIndex}.jpg`;
   
-  // 核心：等待 Excel 加载完毕
-  globalCardData = await loadCardDataFromExcel();
-  renderCards(globalCardData);
-
-  // 滚动交互
-  document.getElementById('enter-btn').onclick = () => document.getElementById('gallery').scrollIntoView({behavior:'smooth'});
-  document.getElementById('rules-btn').onclick = () => document.getElementById('rules').scrollIntoView({behavior:'smooth'});
-  document.getElementById('toggle-rules').onclick = () => {
-    document.getElementById('rules-content').classList.toggle('expanded');
+  img.onload = () => {
+    heroLayer.style.backgroundImage = `url(${url})`;
+    heroIndex = nextIndex;
   };
+  // 即使失败也继续尝试下一张（如果你的图片没齐）
+  img.onerror = () => { heroIndex = nextIndex; };
+  
+  img.src = url;
+}
+
+/* 初始化执行 */
+document.addEventListener('DOMContentLoaded', () => {
+  initParticles();
+  initGameData(); // 加载 Excel
+  
+  // 启动背景轮播
+  rotateHeroBg();
+  setInterval(rotateHeroBg, 8000);
+  
+  // 页面滚动锚点
+  document.getElementById('enter-btn').onclick = () => document.getElementById('gallery').scrollIntoView({behavior:'smooth'});
+  document.getElementById('rules-btn').onclick = () => document.getElementById('highlights').scrollIntoView({behavior:'smooth'});
 });
