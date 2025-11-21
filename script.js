@@ -72,12 +72,12 @@ async function initData() {
 
     // 映射数据
     allCards = rawData.map(row => ({
-      name: row['名称'] || row['name'] || '未知',
+      name: row['卡牌名称'] || row['name'] || '未知',
       value: row['数值'] || row['value'] || '-',
       type: row['类型'] || row['type'] || '法术',
       tier: row['阶数'] || row['tier'] || '一阶',
       effect: row['效果'] || row['effect'] || '',
-      image: `${CARD_IMG_DIR}${row['名称']}.png`
+      image: `${CARD_IMG_DIR}${row['卡牌名称']}.png`
     }));
 
     renderCards(allCards);
