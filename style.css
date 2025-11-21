@@ -1,158 +1,290 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>异人杀 · 官方 | 命运交织</title>
+:root {
+  --bg: #05070a;
+  --accent-1: #4deeea; /* 赛博青 */
+  --accent-2: #7400d8; /* 赛博紫 */
+  --accent-3: #ff0055; /* 强调红 */
+  --gold: #ffd700;
+  --text-main: #e9eef6;
+  --text-muted: #8b9bb4;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(20, 24, 30, 0.6);
+  --font-title: 'Ma Shan Zheng', cursive; /* 书法字体 */
+  --font-body: 'Noto Sans SC', sans-serif;
+}
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@300;500;700&display=swap" rel="stylesheet">
+* { box-sizing: border-box; }
 
-  <link rel="stylesheet" href="style.css" />
-  <meta name="description" content="异人杀 — 自制 TCG 卡牌展示页" />
-</head>
-<body>
-  <canvas id="bg-canvas" class="bg-canvas"></canvas>
-  
-  <div class="vignette"></div>
+/* 自定义滚动条 */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #020204; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-1); }
 
-  <header class="hero-header">
-    <div class="hero-overlay">
-      <div class="hero-content scroll-animate">
-        <div class="logo-wrapper">
-          <h1 class="glitch-text" data-text="异人杀">异人杀</h1>
-        </div>
-        <p class="subtitle">命运交织 · 万象归流</p>
-        <div class="hero-cta">
-          <button id="enter-btn" class="btn-glow">
-            <span>进入卡牌世界</span>
-            <div class="btn-particles"></div>
-          </button>
-          <button id="rules-btn" class="btn-ghost">查看天道法则</button>
-        </div>
-      </div>
-    </div>
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  color: var(--text-main);
+  overflow-x: hidden;
+}
 
-    <div class="hero-carousel" id="hero-carousel">
-      </div>
+/* 背景粒子画布 */
+.bg-canvas {
+  position: fixed; inset: 0; z-index: -2; display: block;
+  background: radial-gradient(circle at 50% -20%, #1a1f35 0%, #000000 100%);
+}
+.vignette {
+  position: fixed; inset: 0; z-index: -1;
+  background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+  pointer-events: none;
+}
 
-    <div class="hero-controls">
-      <div id="carousel-dots" class="dots"></div>
-    </div>
-  </header>
+/* === Hero 头部 === */
+.hero-header {
+  position: relative;
+  height: 65vh; min-height: 500px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  perspective: 1000px;
+}
 
-  <main class="container">
-    <section class="intro glass scroll-animate">
-      <div class="intro-left">
-        <h2>欢迎入局</h2>
-        <p>天地为盘，众生为子。一款玄幻仙侠风卡牌对战游戏。收集、构筑、博弈 —— 气运与算计并存。</p>
-      </div>
-      <div class="intro-right">
-        <div class="stat-box">
-          <div class="stat-ring"></div>
-          <div class="stat-content">
-            <div class="num">200+</div>
-            <div class="label">万象卡库</div>
-          </div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-ring"></div>
-          <div class="stat-content">
-            <div class="num">PvP</div>
-            <div class="label">神通斗法</div>
-          </div>
-        </div>
-      </div>
-    </section>
+.hero-carousel {
+  position: absolute; inset: 0;
+  filter: brightness(0.7) blur(0px);
+  transform: scale(1.1);
+  transition: transform 5s ease-out; /* 缓慢移动效果 */
+}
+.hero-slide {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0; transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hero-slide.active { opacity: 1; }
 
-    <section id="gallery" class="gallery glass scroll-animate">
-      <div class="section-head">
-        <h3><span class="icon">✦</span> 卡牌画廊</h3>
-        <div class="filter-row">
-          <div class="filters">
-            <button class="filter-btn active" data-type="all">万象</button>
-            <button class="filter-btn" data-type="法术">法术</button>
-            <button class="filter-btn" data-type="状态">状态</button>
-            <button class="filter-btn" data-type="武器">武器</button>
-            <button class="filter-btn" data-type="宝具">宝具</button>
-          </div>
-          <div class="search-wrapper">
-            <input id="search" class="search" type="text" placeholder="寻觅卡牌..." />
-            <div class="search-focus-border"></div>
-          </div>
-        </div>
-      </div>
+.hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, rgba(5,7,10,0.8) 90%, var(--bg) 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
 
-      <div id="cards-grid" class="cards-grid"></div>
-      <div id="loading" class="loading">
-        <div class="spinner"></div>
-        <p>正在从虚空中召唤卡牌...</p>
-      </div>
-    </section>
+.hero-content { text-align: center; z-index: 10; }
 
-    <section id="rules" class="rules glass scroll-animate">
-      <div class="section-head">
-        <h3><span class="icon">❖</span> 规则 · 快速入门</h3>
-        <button id="toggle-rules" class="btn-small">展开卷轴</button>
-      </div>
-      <div id="rules-content" class="rules-content collapsed">
-        <div class="rules-inner">
-          <article>
-            <h4>基础概念</h4>
-            <p>每位修士拥有生命值、手牌、状态区与装备区。卡牌分为：法术 / 状态 / 武器 / 宝具（阶数：一阶 / 二阶 / 三阶）。</p>
-          </article>
-          <article>
-            <h4>特殊关键词</h4>
-            <ul class="keywords-list">
-              <li><strong class="kw-fire">余烬</strong>：卡牌在送入墓地后，亦可发挥余热。</li>
-              <li><strong class="kw-void">引渡</strong>：放弃升阶，从牌河定向汲取力量。</li>
-              <li><strong class="kw-luck">运势</strong>：投掷骰子，天命难违。</li>
-              <li><strong class="kw-star">占卜</strong>：窥探未来，逆天改命。</li>
-            </ul>
-          </article>
-          <p class="muted" style="margin-top:1rem">（详细规则请参阅完整天书）</p>
-        </div>
-      </div>
-    </section>
-  </main>
+/* 故障风标题 */
+.logo-wrapper h1 {
+  font-family: var(--font-title);
+  font-size: 5rem; margin: 0;
+  background: linear-gradient(180deg, #fff, #b0c4de);
+  -webkit-background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 20px rgba(77, 238, 234, 0.5);
+  letter-spacing: 4px;
+  position: relative;
+}
+.subtitle {
+  font-size: 1.2rem; letter-spacing: 6px; color: var(--accent-1);
+  margin-bottom: 2rem; text-transform: uppercase; opacity: 0.8;
+}
 
-  <div id="card-modal" class="modal">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <div class="modal-body">
-        <div class="modal-img-wrapper">
-          <img id="modal-image" src="" alt="卡牌" />
-          <div class="modal-shine"></div>
-        </div>
-        <div class="modal-info">
-          <div class="info-header">
-             <h2 id="modal-name">卡牌名称</h2>
-             <div class="info-badges">
-               <span id="modal-tier" class="tag tier-tag"></span>
-               <span id="modal-class" class="tag type-tag"></span>
-             </div>
-          </div>
-          <div class="modal-stats">
-            <span class="stat-label">数值/消耗</span>
-            <span id="modal-value" class="val"></span>
-          </div>
-          <div class="divider"></div>
-          <p id="modal-effect" class="effect-text"></p>
-          <div class="modal-actions">
-            <button class="btn-glow">加入构筑</button>
-            <a id="download-link" class="btn-ghost" download>下载卡面</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+/* 按钮特效 */
+.btn-glow {
+  position: relative;
+  border: none; padding: 14px 32px;
+  border-radius: 4px;
+  background: transparent;
+  color: #fff; font-weight: 700; font-size: 1rem; letter-spacing: 1px;
+  cursor: pointer; overflow: hidden;
+  transition: 0.3s;
+  box-shadow: 0 0 10px rgba(77,238,234,0.2), inset 0 0 0 1px var(--accent-1);
+}
+.btn-glow::before {
+  content:''; position: absolute; top:0; left:-100%; width:100%; height:100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: 0.5s;
+}
+.btn-glow:hover {
+  background: var(--accent-1);
+  color: #000;
+  box-shadow: 0 0 30px rgba(77,238,234,0.6);
+}
+.btn-glow:hover::before { left: 100%; }
 
-  <footer>
-    <p>© 2025 异人杀 · <span style="color:var(--accent-1)">余光</span> 监制</p>
-  </footer>
+.btn-ghost {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 14px 24px; color: #ddd; border-radius: 4px;
+  cursor: pointer; margin-left: 15px; transition: 0.3s;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.15); border-color: #fff; }
 
-  <script src="script.js"></script>
-</body>
-</html>
+.dots button {
+  width: 40px; height: 3px; margin: 0 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.3); border: none; cursor: pointer; transition: 0.3s;
+}
+.dots button.active { background: var(--accent-1); width: 60px; box-shadow: 0 0 10px var(--accent-1); }
+
+/* === 主容器 === */
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; position: relative; z-index: 5; }
+
+/* 毛玻璃高级版 */
+.glass {
+  background: rgba(20, 25, 35, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-top: 1px solid rgba(255,255,255,0.15);
+  border-radius: 16px;
+  padding: 2rem; margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+/* Intro 区域 */
+.intro { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.intro h2 { font-family: var(--font-title); font-size: 2rem; margin: 0 0 10px; color: var(--accent-1); }
+.intro-right { display: flex; gap: 20px; }
+.stat-box {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0,0,0,0.3); padding: 10px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);
+}
+.stat-ring { width: 8px; height: 8px; background: var(--accent-2); border-radius: 50%; box-shadow: 0 0 10px var(--accent-2); }
+.num { font-weight: 700; font-size: 1.4rem; color: #fff; line-height: 1; }
+.label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+
+/* 筛选栏 */
+.section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.section-head h3 { font-family: var(--font-title); font-size: 1.8rem; margin: 0; display: flex; align-items: center; gap: 8px; }
+.icon { color: var(--accent-1); font-size: 1.2rem; }
+
+.filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-btn {
+  background: transparent; border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted); padding: 6px 16px; border-radius: 20px;
+  cursor: pointer; transition: 0.3s; font-size: 0.9rem;
+}
+.filter-btn:hover, .filter-btn.active {
+  background: var(--accent-2); border-color: var(--accent-2);
+  color: #fff; box-shadow: 0 0 15px rgba(116, 0, 216, 0.4);
+}
+
+.search-wrapper { position: relative; }
+.search {
+  background: rgba(0,0,0,0.3); border: none; padding: 8px 16px; border-radius: 20px;
+  color: #fff; width: 200px; transition: 0.3s; outline: none; border: 1px solid transparent;
+}
+.search:focus { background: rgba(0,0,0,0.5); border-color: var(--accent-1); width: 240px; }
+
+/* === 核心：3D 卡牌网格 === */
+.cards-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 24px;
+  perspective: 1000px; /* 开启 3D 空间 */
+}
+
+.card-item {
+  position: relative; height: 280px;
+  border-radius: 12px; cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out; /* 脚本控制 transform */
+  background: #151920;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.card-item::after {
+  /* 扫光特效 */
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(125deg, transparent 0%, rgba(255,255,255,0.1) 45%, rgba(255,255,255,0.0) 50%);
+  opacity: 0; transition: opacity 0.3s; pointer-events: none; border-radius: 12px;
+}
+.card-item:hover::after { opacity: 1; }
+
+/* 卡牌边框发光 */
+.card-item:hover { box-shadow: 0 0 25px rgba(77,238,234,0.15); border-color: rgba(77,238,234,0.3); }
+
+.card-image {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 12px;
+  /* 降低一点亮度，hover 恢复，营造神秘感 */
+  filter: brightness(0.85); transition: 0.4s;
+}
+.card-item:hover .card-image { filter: brightness(1.1) contrast(1.1); }
+
+.card-label {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  color: #fff; font-weight: 500; text-align: center;
+  border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+  transform: translateZ(20px); /* 文字悬浮 */
+}
+
+/* 加载动画 */
+.spinner {
+  width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent-1); border-radius: 50%;
+  animation: spin 1s linear infinite; margin: 0 auto 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading { text-align: center; padding: 40px; color: var(--text-muted); }
+
+/* 规则折叠区 */
+.rules-content { max-height: 0; overflow: hidden; transition: max-height 0.6s cubic-bezier(0,1,0,1); }
+.rules-content.expanded { max-height: 1000px; transition: max-height 0.8s ease-in-out; }
+.rules-inner { padding-top: 20px; border-top: 1px dashed rgba(255,255,255,0.1); }
+.keywords-list li { margin-bottom: 8px; }
+.kw-fire { color: #ff5f5f; } .kw-void { color: #b388ff; }
+.kw-luck { color: #ffd700; } .kw-star { color: #4deeea; }
+
+/* === 模态框 === */
+.modal {
+  position: fixed; inset: 0; z-index: 999;
+  display: none; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.3s;
+}
+.modal.show { opacity: 1; }
+.modal-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(5px);
+}
+.modal-content {
+  position: relative; width: min(900px, 95%);
+  background: #11141a; border: 1px solid var(--glass-border);
+  border-radius: 16px; overflow: hidden;
+  transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+}
+.modal.show .modal-content { transform: scale(1); }
+
+.modal-body { display: flex; padding: 0; }
+.modal-img-wrapper { width: 40%; position: relative; background: #0a0c10; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.modal-img-wrapper img { width: 100%; height: 100%; object-fit: cover; mask-image: linear-gradient(to right, black 85%, transparent 100%); }
+
+.modal-info { width: 60%; padding: 30px; display: flex; flex-direction: column; }
+.info-header { margin-bottom: 15px; }
+.info-header h2 { font-family: var(--font-title); font-size: 2.5rem; margin: 0; color: #fff; }
+
+.info-badges { display: flex; gap: 10px; margin-top: 10px; }
+.tag { padding: 4px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+.tier-tag { background: rgba(255, 215, 0, 0.15); color: var(--gold); border: 1px solid rgba(255, 215, 0, 0.3); }
+.type-tag { background: rgba(77, 238, 234, 0.15); color: var(--accent-1); border: 1px solid rgba(77, 238, 234, 0.3); }
+
+.modal-stats { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; }
+.stat-label { color: var(--text-muted); font-size: 0.9rem; }
+.val { font-family: 'Courier New', monospace; font-size: 1.5rem; color: #fff; text-shadow: 0 0 10px var(--accent-1); }
+
+.divider { height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent); margin: 15px 0; }
+.effect-text { color: #ccc; line-height: 1.7; flex-grow: 1; font-size: 0.95rem; }
+
+.modal-actions { display: flex; gap: 15px; margin-top: 20px; }
+
+/* 滚动动画类 */
+.scroll-animate { opacity: 0; transform: translateY(30px); transition: all 0.8s ease-out; }
+.scroll-animate.visible { opacity: 1; transform: translateY(0); }
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .logo-wrapper h1 { font-size: 3rem; }
+  .hero-header { height: 50vh; }
+  .modal-body { flex-direction: column; }
+  .modal-img-wrapper { width: 100%; height: 250px; }
+  .modal-img-wrapper img { mask-image: linear-gradient(to bottom, black 80%, transparent 100%); }
+  .modal-info { width: 100%; }
+}
