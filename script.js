@@ -2,7 +2,7 @@
 
 const EXCEL_PATH = 'assets/card.xlsx'; 
 const CARD_IMG_DIR = 'assets/cards/';
-const BGM_ID = 'assets/bgm';
+const BGM_ID = 'assets/bgm.mp3';
 
 // DOM
 const grid = document.getElementById('cards-grid');
@@ -49,7 +49,7 @@ async function initData() {
       type: row['类型'] || row['type'] || '法术',
       tier: row['阶数'] || row['tier'] || '一阶',
       effect: row['效果'] || row['effect'] || '',
-      image: `${CARD_IMG_DIR}${row['名称']}.png`
+      image: `${CARD_IMG_DIR}${row['卡牌名称']}.png`
     }));
 
     // B. 读取英雄 (精准匹配你的CSV格式)
