@@ -3,143 +3,125 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>异人杀 · 天道万象 | 东方玄幻卡牌对决</title>
-
+  <title>异人杀 · 墨染天地</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="bg-ink"></div>
-  <canvas id="spirit-dust"></canvas>
-  <div class="vignette"></div>
 
-  <header class="hero-section">
-    <div class="hero-inner">
-      <div class="logo-area">
-        <h1 class="calligraphy-title">异人杀</h1>
-        <div class="seal">官方</div>
+  <div id="ink-container">
+    <canvas id="ink-canvas"></canvas>
+  </div>
+  
+  <svg style="position: absolute; width: 0; height: 0;">
+    <defs>
+      <filter id="ink-flow">
+        <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" />
+      </filter>
+      <filter id="paper-roughness">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" result="noise"/>
+        <feDiffuseLighting in="noise" lighting-color="#fff" surfaceScale="2">
+          <feDistantLight azimuth="45" elevation="60"/>
+        </feDiffuseLighting>
+      </filter>
+    </defs>
+  </svg>
+
+  <header class="hero">
+    <div class="hero-content">
+      <div class="brand-box">
+        <h1 class="ink-title" data-text="异人杀">异人杀</h1>
+        <div class="stamp">天道</div>
       </div>
-      <p class="subtitle">命运交织 · 万象归流</p>
-      
-      <div class="hero-actions">
-        <button id="enter-btn" class="btn-talisman">入局博弈</button>
-        <button id="rules-btn" class="btn-scroll">参悟法则</button>
+      <p class="subtitle">以天地为棋盘 · 众生为棋子</p>
+      <div class="btn-group">
+        <button id="enter-btn" class="btn-ink">入局</button>
+        <button id="rules-btn" class="btn-outline">参悟</button>
       </div>
     </div>
-    
-    <div id="hero-bg-layer" class="hero-bg-layer"></div>
   </header>
 
   <main class="container">
-    
-    <section id="highlights" class="section-block paper-texture">
-      <div class="section-header">
-        <span class="decoration-line"></span>
-        <h2>天道法则 · 核心机制</h2>
-        <span class="decoration-line"></span>
+    <section id="rules-intro" class="section scroll-reveal">
+      <div class="section-title">
+        <span class="deco-l"></span><h2>法则 · 机要</h2><span class="deco-r"></span>
       </div>
-      
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">🎲</div>
-          <h3>运势 · 命数</h3>
-          <p>天意难测，祸福相依。投掷骰子判定效果，极大值不仅带来强力增益，更可逆转战局。是天命之子还是时运不济，全在一念之间。</p>
+      <div class="rule-cards">
+        <div class="rule-card">
+          <div class="icon-ink">命</div>
+          <h3>运势判定</h3>
+          <p>掷骰定乾坤。极大值不仅带来强力增益，更可逆转必死之局。</p>
         </div>
-        
-        <div class="feature-card">
-          <div class="feature-icon">👁️</div>
-          <h3>占卜 · 窥天</h3>
-          <p>凡人顺势，仙人逆天。独有的【占卜】机制允许你窥探并重排牌库顶端。提前布局，让对手的每一步都在你的算计之中。</p>
+        <div class="rule-card">
+          <div class="icon-ink">数</div>
+          <h3>占卜窥天</h3>
+          <p>窥探并重排牌库顶端。提前布局，让对手每一步都在算计之中。</p>
         </div>
-        
-        <div class="feature-card">
-          <div class="feature-icon">🔥</div>
-          <h3>余烬 · 轮回</h3>
-          <p>身死道消并非终点。利用【余烬】在墓地发动效果，或通过【引渡】放弃升阶来定向检索。资源循环，生生不息。</p>
+        <div class="rule-card">
+          <div class="icon-ink">回</div>
+          <h3>余烬引渡</h3>
+          <p>死并非终点。利用【余烬】在墓地发动效果，或【引渡】定向检索。</p>
         </div>
       </div>
     </section>
 
-    <section id="gallery" class="section-block">
-      <div class="section-header">
-        <h2>万象图谱 · 卡牌库</h2>
-        <p class="sub-header-text">实时读取天机 (card.xlsx)</p>
+    <section id="gallery" class="section scroll-reveal">
+      <div class="section-title">
+        <span class="deco-l"></span><h2>万象 · 图谱</h2><span class="deco-r"></span>
       </div>
-
-      <div class="filter-bar glass-jade">
+      
+      <div class="filter-ink-bar">
         <div class="filters">
-          <button class="filter-btn active" data-type="all">全部</button>
-          <button class="filter-btn" data-type="法术">法术</button>
-          <button class="filter-btn" data-type="状态">状态</button>
-          <button class="filter-btn" data-type="武器">神兵</button>
-          <button class="filter-btn" data-type="宝具">法宝</button>
+          <span class="filter-item active" data-type="all">万象</span>
+          <span class="filter-item" data-type="法术">法术</span>
+          <span class="filter-item" data-type="状态">状态</span>
+          <span class="filter-item" data-type="武器">神兵</span>
+          <span class="filter-item" data-type="宝具">法宝</span>
         </div>
-        <div class="search-box">
-          <input type="text" id="search-input" placeholder="寻觅神通..." />
-          <span class="search-icon">🔍</span>
-        </div>
+        <input type="text" id="search" placeholder="寻觅神通..." />
       </div>
 
-      <div id="cards-grid" class="cards-grid">
+      <div id="cards-grid" class="cards-grid"></div>
+
+      <div id="loading-state" class="loading-box">
+        <div class="ink-loader"></div>
+        <p id="loading-text">正在沟通天地灵气...</p>
+        <div id="error-actions" style="display:none; margin-top:15px;">
+          <p style="font-size:0.9rem; color:#a83636; margin-bottom:10px;">(若长时间未响应，请按 F12 查看控制台)</p>
+          <button onclick="loadDemoData()" class="btn-outline">加载演示数据</button>
         </div>
-      
-      <div id="loading-state" class="loading-state">
-        <div class="ink-spinner"></div>
-        <p>正在从虚空中召唤卡牌...</p>
       </div>
     </section>
-
   </main>
 
-  <div id="card-modal" class="modal">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content scroll-style">
-      <div class="close-btn">&times;</div>
-      
-      <div class="modal-layout">
-        <div class="card-preview">
-          <img id="modal-img" src="" alt="卡牌预览" />
-          <div class="card-aura"></div>
+  <div id="modal" class="modal-overlay">
+    <div class="modal-scroll">
+      <div class="close-modal">&times;</div>
+      <div class="modal-inner">
+        <div class="modal-visual">
+          <img id="m-img" src="" alt="">
+          <div class="ink-splash"></div>
         </div>
-        
-        <div class="card-details">
-          <div class="detail-header">
-            <h2 id="modal-name">卡牌名称</h2>
-            <div class="badges">
-              <span id="modal-tier" class="badge-gold"></span>
-              <span id="modal-type" class="badge-ink"></span>
-            </div>
+        <div class="modal-text">
+          <h2 id="m-name"></h2>
+          <div class="m-tags">
+            <span id="m-tier" class="tag-gold"></span>
+            <span id="m-type" class="tag-ink"></span>
           </div>
-          
-          <div class="detail-stats">
-            <div class="stat-item">
-              <span class="label">数值/消耗</span>
-              <span id="modal-value" class="value-text"></span>
-            </div>
-          </div>
-          
-          <div class="divider-gold"></div>
-          
-          <div class="effect-box">
-            <p id="modal-effect"></p>
-          </div>
-          
-          <div class="modal-footer">
-            <button class="btn-download" onclick="downloadCardImg()">下载图鉴</button>
+          <div class="m-stat">数值/消耗: <span id="m-val"></span></div>
+          <div class="m-desc-box">
+            <p id="m-effect"></p>
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <footer>
-    <p> © 2025 异人杀 · 独家玄幻卡牌对战 · <span class="gold-text">余光</span> 监制</p>
-  </footer>
 
   <script src="script.js"></script>
 </body>
