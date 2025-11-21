@@ -4,31 +4,23 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>异人杀 · 墨染天地</title>
-  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;700&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;600;900&display=swap" rel="stylesheet">
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <div id="ink-container">
-    <canvas id="ink-canvas"></canvas>
-  </div>
-  
+  <audio id="bgm" loop><source src="bgm.mp3" type="audio/mpeg"></audio>
+  <div id="music-toggle" class="music-control" title="播放/暂停"><div class="music-icon">律</div></div>
+
+  <div id="ink-container"><canvas id="ink-canvas"></canvas></div>
   <svg style="position: absolute; width: 0; height: 0;">
     <defs>
       <filter id="ink-flow">
         <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" result="noise" />
         <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" />
-      </filter>
-      <filter id="paper-roughness">
-        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" result="noise"/>
-        <feDiffuseLighting in="noise" lighting-color="#fff" surfaceScale="2">
-          <feDistantLight azimuth="45" elevation="60"/>
-        </feDiffuseLighting>
       </filter>
     </defs>
   </svg>
@@ -37,67 +29,43 @@
     <div class="hero-content">
       <div class="brand-box">
         <h1 class="ink-title" data-text="异人杀">异人杀</h1>
-        <div class="stamp">天道</div>
+        <div class="stamp">官方</div>
       </div>
-      <p class="subtitle">以天地为棋盘 · 众生为棋子</p>
+      <p class="subtitle">灵能流转 · 阶序飞升 · 牌河博弈</p>
       <div class="btn-group">
         <button id="enter-btn" class="btn-ink">入局</button>
-        <button id="rules-btn" class="btn-outline">参悟</button>
+        <button id="knowledge-btn" class="btn-outline">参悟</button>
       </div>
     </div>
   </header>
 
-  <main class="container">
-    <section id="rules-intro" class="section scroll-reveal">
-      <div class="section-title">
-        <span class="deco-l"></span><h2>法则 · 机要</h2><span class="deco-r"></span>
+  <main class="container" id="gallery-section">
+    <div class="section-title">
+      <span class="deco-l"></span><h2>万象 · 图谱</h2><span class="deco-r"></span>
+    </div>
+    
+    <div class="filter-ink-bar">
+      <div class="filters">
+        <span class="filter-item active" data-type="all">万象</span>
+        <span class="filter-item" data-type="法术">法术</span>
+        <span class="filter-item" data-type="状态">状态</span>
+        <span class="filter-item" data-type="武器">武器</span>
+        <span class="filter-item" data-type="宝具">宝具</span>
       </div>
-      <div class="rule-cards">
-        <div class="rule-card">
-          <div class="icon-ink">命</div>
-          <h3>运势判定</h3>
-          <p>掷骰定乾坤。极大值不仅带来强力增益，更可逆转必死之局。</p>
-        </div>
-        <div class="rule-card">
-          <div class="icon-ink">数</div>
-          <h3>占卜窥天</h3>
-          <p>窥探并重排牌库顶端。提前布局，让对手每一步都在算计之中。</p>
-        </div>
-        <div class="rule-card">
-          <div class="icon-ink">回</div>
-          <h3>余烬引渡</h3>
-          <p>死并非终点。利用【余烬】在墓地发动效果，或【引渡】定向检索。</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="gallery" class="section scroll-reveal">
-      <div class="section-title">
-        <span class="deco-l"></span><h2>万象 · 图谱</h2><span class="deco-r"></span>
-      </div>
-      
-      <div class="filter-ink-bar">
-        <div class="filters">
-          <span class="filter-item active" data-type="all">万象</span>
-          <span class="filter-item" data-type="法术">法术</span>
-          <span class="filter-item" data-type="状态">状态</span>
-          <span class="filter-item" data-type="武器">神兵</span>
-          <span class="filter-item" data-type="宝具">法宝</span>
-        </div>
+      <div class="search-wrap">
         <input type="text" id="search" placeholder="寻觅神通..." />
       </div>
+    </div>
 
-      <div id="cards-grid" class="cards-grid"></div>
-
-      <div id="loading-state" class="loading-box">
-        <div class="ink-loader"></div>
-        <p id="loading-text">正在沟通天地灵气...</p>
-        <div id="error-actions" style="display:none; margin-top:15px;">
-          <p style="font-size:0.9rem; color:#a83636; margin-bottom:10px;">(若长时间未响应，请按 F12 查看控制台)</p>
-          <button onclick="loadDemoData()" class="btn-outline">加载演示数据</button>
-        </div>
+    <div id="cards-grid" class="cards-grid"></div>
+    
+    <div id="loading-state" class="loading-box">
+      <div class="ink-loader"></div>
+      <p id="loading-text">正在沟通天地灵气...</p>
+      <div id="error-actions" style="display:none; margin-top:15px;">
+        <button onclick="loadBuiltInData()" class="btn-outline">加载天道真言 (演示数据)</button>
       </div>
-    </section>
+    </div>
   </main>
 
   <div id="modal" class="modal-overlay">
@@ -110,15 +78,50 @@
         </div>
         <div class="modal-text">
           <h2 id="m-name"></h2>
-          <div class="m-tags">
-            <span id="m-tier" class="tag-gold"></span>
-            <span id="m-type" class="tag-ink"></span>
-          </div>
+          <div class="m-tags"><span id="m-tier" class="tag-gold"></span><span id="m-type" class="tag-ink"></span></div>
           <div class="m-stat">数值/消耗: <span id="m-val"></span></div>
-          <div class="m-desc-box">
-            <p id="m-effect"></p>
-          </div>
+          <div class="m-desc-box"><p id="m-effect"></p></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="knowledge-modal" class="modal-overlay knowledge-overlay">
+    <div class="book-container">
+      <div class="close-book" id="close-knowledge">&times;</div>
+      
+      <div class="book-tabs">
+        <div class="book-tab active" data-tab="hero">奇人志</div>
+        <div class="book-tab" data-tab="rule-basic">基础法则</div>
+        <div class="book-tab" data-tab="rule-terms">万物词条</div>
+      </div>
+
+      <div class="book-pages">
+        
+        <div id="tab-hero" class="page-content active">
+          <div class="page-header">
+            <h3>奇人 · 异士</h3>
+            <p>天赋各异，神通显化</p>
+          </div>
+          <div id="hero-list" class="hero-list"></div>
+        </div>
+
+        <div id="tab-rule-basic" class="page-content">
+          <div class="page-header">
+            <h3>天道 · 运行</h3>
+            <p>起手、回合、胜负之分</p>
+          </div>
+          <div id="rule-basic-list" class="rule-content-box"></div>
+        </div>
+
+        <div id="tab-rule-terms" class="page-content">
+          <div class="page-header">
+            <h3>万象 · 释义</h3>
+            <p>灵能、牌河、等阶之秘</p>
+          </div>
+          <div id="rule-term-list" class="rule-content-box"></div>
+        </div>
+
       </div>
     </div>
   </div>
