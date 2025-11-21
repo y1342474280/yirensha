@@ -7,6 +7,21 @@
   --font-art: 'Ma Shan Zheng', cursive;
   --font-std: 'Noto Serif SC', serif;
 }
+/* 添加到 style.css 中 */
+.m-desc-box .kw {
+    font-weight: bold;
+    color: var(--red); /* 使用你定义的红色 */
+    background: rgba(163, 24, 24, 0.08);
+    padding: 1px 3px;
+    border-radius: 2px;
+    white-space: nowrap; /* 防止关键字被拆分 */
+}
+
+/* 规则列表中的内容也可以考虑添加一些样式来区分标题和解释 */
+.rule-body strong {
+    color: var(--ink);
+    font-weight: 900;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
