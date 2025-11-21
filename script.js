@@ -1,244 +1,164 @@
-/* ========= 异人杀：天道引擎 (Core Script) ========= */
+/* ========= 异人杀：水墨引擎 ========= */
 
-/* 配置 */
-// 注意：请将你的 card.xlsx 文件放在网站根目录，或者 assets 文件夹内
-const DATA_SOURCE = 'assets/card.xlsx'; 
-const CARD_IMAGE_PATH = 'assets/cards/'; // 假设你把之前的PNG都放在这
-const HERO_BG_PATH = 'assets/bg/hero';   // 英雄背景图前缀
+const EXCEL_PATH = './assets/card.xlsx'; // 确保这个文件在根目录
+const CARD_IMG_DIR = './assets/cards/';
 
-/* DOM 元素 */
+// DOM 元素
 const grid = document.getElementById('cards-grid');
-const loading = document.getElementById('loading-state');
-const modal = document.getElementById('card-modal');
-const searchInput = document.getElementById('search-input');
-const heroLayer = document.getElementById('hero-bg-layer');
+const loader = document.getElementById('loading-state');
+const loadingText = document.getElementById('loading-text');
+const errorArea = document.getElementById('error-actions');
+const modal = document.getElementById('modal');
 
-/* 全局数据缓存 */
-let allCardData = [];
+let allCards = [];
 
-/* ================= 1. 核心：读取 Excel ================= */
-async function initGameData() {
-  try {
-    // 1. 获取 Excel 文件
-    const response = await fetch(DATA_SOURCE);
-    if (!response.ok) {
-        // 尝试去 assets 找找
-        const response2 = await fetch('assets/' + DATA_SOURCE);
-        if(!response2.ok) throw new Error("无法找到 card.xlsx，请确保文件已上传。");
-        var arrayBuffer = await response2.arrayBuffer();
-    } else {
-        var arrayBuffer = await response.arrayBuffer();
+/* 1. 初始化：水墨鼠标轨迹 */
+(function initInkTrail() {
+  const canvas = document.getElementById('ink-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  let trails = [];
+
+  function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // 鼠标移动生成墨点
+  window.addEventListener('mousemove', e => {
+    trails.push({ x: e.clientX, y: e.clientY, size: Math.random()*20 + 10, life: 1 });
+  });
+
+  function animate() {
+    ctx.clearRect(0, 0, w, h);
+    for (let i = 0; i < trails.length; i++) {
+      const p = trails[i];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0, 0, 0, ${p.life * 0.1})`; // 淡墨
+      ctx.fill();
+      p.life -= 0.02; // 慢慢消失
+      p.size += 0.2;  // 慢慢扩散
+      if (p.life <= 0) { trails.splice(i, 1); i--; }
     }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
 
-    // 2. 解析
+/* 2. 核心：加载数据 */
+async function initData() {
+  try {
+    console.log("正在尝试读取 Excel...");
+    
+    // 1. 尝试 Fetch
+    const response = await fetch(EXCEL_PATH);
+    
+    // === 关键排查点：如果是 404，说明文件路径不对 ===
+    if (response.status === 404) throw new Error(`找不到文件 (404)。请确认 card.xlsx 是否在根目录。`);
+    
+    // === 关键排查点：如果是 index.html 内容，说明服务器配置错误 ===
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("text/html")) throw new Error("路径返回了HTML而非文件，请检查服务器配置。");
+
+    if (!response.ok) throw new Error(`网络错误: ${response.status}`);
+
+    const arrayBuffer = await response.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-    
-    // 3. 寻找 "游戏卡牌" sheet
-    // 如果找不到中文名，就默认取第4个sheet(通常是游戏卡牌)，或者第1个
-    let targetSheetName = workbook.SheetNames.find(name => name.includes('游戏卡牌'));
-    if (!targetSheetName) targetSheetName = workbook.SheetNames[0];
-    
-    const worksheet = workbook.Sheets[targetSheetName];
-    
-    // 4. 转换为 JSON
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-    
-    // 5. 格式化数据 (映射中文列名 -> 英文Key)
-    allCardData = jsonData.map(row => {
-      return {
-        name: row['名称'] || '无名之辈',
-        value: row['数值'] || '-',
-        type: row['类型'] || '未知',
-        tier: row['阶数'] || '凡阶',
-        effect: row['效果'] || '此物平平无奇，并无特效。',
-        // 如果Excel没图，就用名字拼路径
-        image: `${CARD_IMAGE_PATH}${row['名称']}.png`
-      };
-    });
 
-    console.log(`天书已解析，共收录 ${allCardData.length} 张卡牌。`);
-    renderCards(allCardData);
+    // 找到正确的 Sheet
+    let sheetName = workbook.SheetNames.find(n => n.includes('游戏卡牌')) || workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json(worksheet);
+
+    // 映射数据
+    allCards = rawData.map(row => ({
+      name: row['名称'] || row['name'] || '未知',
+      value: row['数值'] || row['value'] || '-',
+      type: row['类型'] || row['type'] || '法术',
+      tier: row['阶数'] || row['tier'] || '一阶',
+      effect: row['效果'] || row['effect'] || '',
+      image: `${CARD_IMG_DIR}${row['名称']}.png`
+    }));
+
+    renderCards(allCards);
+    loader.style.display = 'none';
 
   } catch (err) {
-    console.error(err);
-    loading.innerHTML = `<p style="color:#a83636">天机遮蔽，读取失败。<br>${err.message}</p>`;
+    console.error("加载失败详情:", err);
+    loadingText.innerHTML = `召唤失败：${err.message}`;
+    loadingText.style.color = '#a83636';
+    // 显示手动加载按钮
+    errorArea.style.display = 'block';
   }
 }
 
-/* ================= 2. 渲染系统 ================= */
-
-function renderCards(cards) {
+/* 3. 渲染逻辑 */
+function renderCards(data) {
   grid.innerHTML = '';
-  loading.style.display = 'none';
-
-  if (cards.length === 0) {
-    grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#666">未寻得相关法门。</p>';
-    return;
-  }
-
-  cards.forEach(card => {
-    const cardEl = document.createElement('div');
-    cardEl.className = 'card-item';
-    
-    // 简单的懒加载与错误处理
-    const imgPath = card.image;
-    
-    cardEl.innerHTML = `
-      <div class="card-inner">
-        <img class="card-img" src="${imgPath}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x450?text=${encodeURIComponent(card.name)}'">
-        <div class="card-name-tag">${card.name}</div>
-      </div>
+  data.forEach(card => {
+    const el = document.createElement('div');
+    el.className = 'card-item';
+    el.innerHTML = `
+      <img class="card-img" src="${card.image}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x400?text=Card'">
+      <div class="card-name">${card.name}</div>
     `;
-
-    // 点击事件
-    cardEl.onclick = () => openModal(card, cardEl.querySelector('img').src);
-    
-    grid.appendChild(cardEl);
+    el.onclick = () => openModal(card);
+    grid.appendChild(el);
   });
 }
 
-/* ================= 3. 交互与特效 ================= */
-
-/* 详情模态框 */
-function openModal(card, imgSrc) {
+/* 4. 详情弹窗 */
+function openModal(card) {
   modal.style.display = 'flex';
-  // 强制重绘以触发 transition
-  setTimeout(() => modal.classList.add('show'), 10);
-
-  document.getElementById('modal-name').textContent = card.name;
-  document.getElementById('modal-tier').textContent = card.tier;
-  document.getElementById('modal-type').textContent = card.type;
-  document.getElementById('modal-value').textContent = card.value;
-  document.getElementById('modal-img').src = imgSrc;
+  document.getElementById('m-img').src = card.image;
+  document.getElementById('m-img').onerror = function(){this.src='https://via.placeholder.com/300x400?text=Card'};
+  document.getElementById('m-name').textContent = card.name;
+  document.getElementById('m-tier').textContent = card.tier;
+  document.getElementById('m-type').textContent = card.type;
+  document.getElementById('m-val').textContent = card.value;
   
-  // 关键词高亮 (根据你的规则文件定制)
-  let effectHtml = card.effect;
-  const keywords = ['吟唱', '速攻', '禁制', '余烬', '引渡', '运势', '占卜', '共鸣', '反制'];
-  keywords.forEach(kw => {
-    const regex = new RegExp(kw, 'g');
-    effectHtml = effectHtml.replace(regex, `<span style="color:#d4af37;font-weight:bold">${kw}</span>`);
+  // 关键词高亮
+  let html = card.effect || '';
+  ['吟唱','速攻','禁制','余烬','引渡','运势','占卜'].forEach(kw => {
+    html = html.replace(new RegExp(kw,'g'), `<span class="kw">${kw}</span>`);
   });
-  document.getElementById('modal-effect').innerHTML = effectHtml;
+  document.getElementById('m-effect').innerHTML = html;
 }
 
-// 关闭模态框
-document.querySelector('.close-btn').onclick = closeModal;
-document.querySelector('.modal-backdrop').onclick = closeModal;
-function closeModal() {
-  modal.classList.remove('show');
-  setTimeout(() => modal.style.display = 'none', 300);
-}
+document.querySelector('.close-modal').onclick = () => modal.style.display = 'none';
+window.onclick = e => { if(e.target === modal) modal.style.display = 'none'; };
 
-// 筛选功能
-document.querySelectorAll('.filter-btn').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    // 样式切换
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
+/* 5. 筛选 */
+document.querySelectorAll('.filter-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const type = btn.dataset.type;
+    const q = document.getElementById('search').value;
     
-    const type = e.target.dataset.type;
-    const searchText = searchInput.value.trim();
-    applyFilter(type, searchText);
+    const filtered = allCards.filter(c => 
+      (type === 'all' || c.type === type) && 
+      (c.name.includes(q) || c.effect.includes(q))
+    );
+    renderCards(filtered);
   });
 });
 
-// 搜索功能
-searchInput.addEventListener('input', (e) => {
-  const type = document.querySelector('.filter-btn.active').dataset.type;
-  applyFilter(type, e.target.value.trim());
+document.getElementById('search').addEventListener('input', e => {
+  document.querySelector('.filter-item.active').click(); // 触发筛选
 });
 
-function applyFilter(type, search) {
-  const filtered = allCardData.filter(c => {
-    const matchType = (type === 'all') || (c.type === type);
-    const matchSearch = c.name.includes(search) || c.effect.includes(search);
-    return matchType && matchSearch;
-  });
-  renderCards(filtered);
-}
+/* 6. 备用方案：加载演示数据 */
+window.loadDemoData = function() {
+  allCards = [
+    { name: "妙手空空", type: "法术", tier: "一阶", value: "-", effect: "吟唱。对手洗牌，自己从中摸一张卡牌加入自己手卡。" },
+    { name: "月下美人", type: "武器", tier: "三阶", value: "4/3", effect: "装备后开启月相切換。新月：回复生命。满月：伤害翻倍。" },
+    { name: "星陨", type: "法术", tier: "一阶", value: "-", effect: "吟唱。对对方造成6伤害。" }
+  ];
+  renderCards(allCards);
+  loader.style.display = 'none';
+  alert("已加载演示数据（仅供预览）。请查看控制台修复 Excel 读取问题。");
+};
 
-/* ================= 4. 氛围特效 (金粉粒子) ================= */
-const canvas = document.getElementById('spirit-dust');
-const ctx = canvas.getContext('2d');
-let particles = [];
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-
-class Particle {
-  constructor() {
-    this.reset();
-  }
-  reset() {
-    this.x = Math.random() * canvas.width;
-    this.y = Math.random() * canvas.height;
-    this.size = Math.random() * 2 + 0.5;
-    this.speedY = Math.random() * -0.5 - 0.1; // 向上漂浮
-    this.speedX = Math.random() * 0.4 - 0.2;
-    this.opacity = Math.random() * 0.5;
-    this.fade = Math.random() * 0.01 + 0.005;
-  }
-  update() {
-    this.y += this.speedY;
-    this.x += this.speedX;
-    this.opacity -= this.fade;
-    if (this.opacity <= 0 || this.y < 0) this.reset();
-  }
-  draw() {
-    ctx.fillStyle = `rgba(212, 175, 55, ${this.opacity})`; // 金色
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function initParticles() {
-  resizeCanvas();
-  for(let i=0; i<60; i++) particles.push(new Particle());
-  animateParticles();
-}
-
-function animateParticles() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  particles.forEach(p => {
-    p.update();
-    p.draw();
-  });
-  requestAnimationFrame(animateParticles);
-}
-
-window.addEventListener('resize', resizeCanvas);
-
-/* ================= 5. 英雄背景轮播 ================= */
-let heroIndex = 1;
-function rotateHeroBg() {
-  // 简单的背景切换逻辑，假设有 hero1.jpg 到 hero5.jpg
-  const img = new Image();
-  const nextIndex = (heroIndex % 5) + 1;
-  const url = `${HERO_BG_PATH}${nextIndex}.jpg`;
-  
-  img.onload = () => {
-    heroLayer.style.backgroundImage = `url(${url})`;
-    heroIndex = nextIndex;
-  };
-  // 即使失败也继续尝试下一张（如果你的图片没齐）
-  img.onerror = () => { heroIndex = nextIndex; };
-  
-  img.src = url;
-}
-
-/* 初始化执行 */
-document.addEventListener('DOMContentLoaded', () => {
-  initParticles();
-  initGameData(); // 加载 Excel
-  
-  // 启动背景轮播
-  rotateHeroBg();
-  setInterval(rotateHeroBg, 8000);
-  
-  // 页面滚动锚点
-  document.getElementById('enter-btn').onclick = () => document.getElementById('gallery').scrollIntoView({behavior:'smooth'});
-  document.getElementById('rules-btn').onclick = () => document.getElementById('highlights').scrollIntoView({behavior:'smooth'});
-});
+// 启动
+document.addEventListener('DOMContentLoaded', initData);
